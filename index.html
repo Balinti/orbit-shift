@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Orbit Shift - Free HTML5 Game</title>
+<meta name="description" content="Play Orbit Shift - Tap to change direction on a zigzag path while the galaxy's color palette smoothly cycles.">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#0a0a1a">
+<link rel="canonical" href="https://balinti.github.io/orbit-shift/">
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Orbit Shift - Free HTML5 Game">
+<meta property="og:description" content="Play Orbit Shift - Tap to change direction on a zigzag path while the galaxy's color palette smoothly cycles.">
+<meta property="og:url" content="https://balinti.github.io/orbit-shift/">
+<meta property="og:image" content="https://balinti.github.io/orbit-shift/og.png">
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Orbit Shift - Free HTML5 Game">
+<meta name="twitter:description" content="Play Orbit Shift - Tap to change direction on a zigzag path while the galaxy's color palette smoothly cycles.">
+<meta name="twitter:image" content="https://balinti.github.io/orbit-shift/og.png">
+<!-- AdSense -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4099346100621490" crossorigin="anonymous"></script>
+<!-- JSON-LD -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "name": "Orbit Shift",
+      "url": "https://balinti.github.io/orbit-shift/"
+    },
+    {
+      "@type": "VideoGame",
+      "name": "Orbit Shift",
+      "description": "Hyper-casual HTML5 game. Shift your ship between concentric rings to dodge hazards and pass through gates.",
+      "url": "https://balinti.github.io/orbit-shift/",
+      "genre": "Hyper-Casual",
+      "gamePlatform": "Web Browser",
+      "applicationCategory": "Game"
+    }
+  ]
+}
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #0a0a1a;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+  }
+  #game-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    height: 100vh;
+    max-height: 750px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="c"></canvas>
+</div>
+<script>
+(function(){
+'use strict';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const BEST_KEY = 'orbitshift_best';
+const RING_COUNT = 3;
+const RING_COLORS = [
+  {h:180, s:90, l:60}, // outer: cyan
+  {h:270, s:80, l:65}, // mid: violet
+  {h:40,  s:95, l:55}, // inner: amber
+];
+const RING_SPEED = [0.6, 0.85, 1.15]; // rad/s multipliers
+const RING_R_FRAC = [0.62, 0.46, 0.30]; // radius fractions of half canvas
+const SHIP_SIZE = 8;
+const TRAIL_COUNT = 4;
+const BASE_SPEED = 1.2; // rad/s base
+const SLINGSHOT_WINDOW = 0.08; // seconds before impact
+const FREEZE_DURATION = 320; // ms on death
+const SHAKE_DURATION = 500; // ms
+
+// ─── Canvas Setup ─────────────────────────────────────────────────────────────
+const wrap = document.getElementById('game-wrap');
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, CX, CY, maxR;
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+function resize(){
+  const rect = wrap.getBoundingClientRect();
+  W = rect.width; H = rect.height;
+  canvas.width  = W * DPR;
+  canvas.height = H * DPR;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(DPR, DPR);
+  CX = W / 2; CY = H / 2;
+  maxR = Math.min(W, H) * 0.5;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let state = 'start'; // 'start' | 'playing' | 'gameover'
+let score = 0;
+let bestScore = parseInt(localStorage.getItem(BEST_KEY) || '0');
+let combo = 0;
+let multiplier = 1;
+let bgHue = 220;
+let worldAngle = 0; // how far around the planet we've rotated (total)
+let shipRing = 0; // 0=outer,1=mid,2=inner
+let shipAngle = -Math.PI / 2; // angular position on orbit (-π/2 = top)
+let speed = BASE_SPEED;
+let difficulty = 0; // 0..1
+let segments = []; // {ring,a0,a1,type:'hazard'|'gate',scored,drift}
+let particles = [];
+let trail = [];
+let shake = {x:0, y:0, t:0, dur:0, mag:0};
+let frozen = false;
+let frozenTimer = 0;
+let lastTime = 0;
+let toast = null;
+let toastTimer = 0;
+let slingshotCooldown = false;
+let slingshotArmed = false;
+let slingshotTimer = 0;
+let milestones = {10:false, 25:false, 50:false, 100:false};
+let gameoverTimer = 0;
+
+// Challenge score from URL
+const urlParams = new URLSearchParams(location.search);
+const challengeScore = parseInt(urlParams.get('challengeScore') || '0');
+
+// ─── Segment Generation ────────────────────────────────────────────────────────
+let genAngle = Math.PI * 2; // how far ahead we've generated
+const GEN_AHEAD = Math.PI * 4;
+const SEG_ARC = Math.PI / 5; // base arc per segment
+
+function genSegments(){
+  while(genAngle - worldAngle < GEN_AHEAD){
+    const ringIdx = Math.floor(Math.random() * RING_COUNT);
+    const arc = SEG_ARC * (0.7 + Math.random() * 0.6 + difficulty * 0.4);
+    const gateSize = Math.max(0.18, 0.45 - difficulty * 0.22);
+    const isHazard = Math.random() < (0.45 + difficulty * 0.3);
+    const a0 = genAngle + Math.PI / 12 + Math.random() * 0.3;
+    const a1 = a0 + arc;
+    const drift = difficulty > 0.5 && Math.random() < 0.3
+      ? (Math.random() - 0.5) * 0.4 * difficulty
+      : 0;
+
+    if(isHazard){
+      // full arc is hazard; cut a gate gap inside it
+      const mid = (a0 + a1) / 2;
+      const half = (a1 - a0) / 2;
+      const gateStart = mid - gateSize / 2;
+      const gateEnd   = mid + gateSize / 2;
+      // hazard part 1
+      if(gateStart > a0) segments.push({ring:ringIdx, a0, a1:gateStart, type:'hazard', scored:false, drift});
+      // gate
+      segments.push({ring:ringIdx, a0:gateStart, a1:gateEnd, type:'gate', scored:false, drift});
+      // hazard part 2
+      if(a1 > gateEnd) segments.push({ring:ringIdx, a0:gateEnd, a1, type:'hazard', scored:false, drift});
+    } else {
+      segments.push({ring:ringIdx, a0, a1, type:'gate', scored:false, drift});
+    }
+    genAngle = a1 + Math.PI / 20;
+  }
+}
+
+// ─── Particles ────────────────────────────────────────────────────────────────
+function spawnParticles(x, y, count, hsl, speed, life){
+  for(let i=0;i<count;i++){
+    const a = Math.random() * Math.PI * 2;
+    const s = speed * (0.5 + Math.random());
+    particles.push({
+      x, y,
+      vx: Math.cos(a)*s, vy: Math.sin(a)*s,
+      life: life*(0.6+Math.random()*0.8),
+      maxLife: life,
+      hsl, size: 2 + Math.random()*3
+    });
+  }
+}
+
+function spawnRingParticles(ring, angle, count, hsl){
+  const r = getRingR(ring);
+  const px = CX + Math.cos(angle)*r;
+  const py = CY + Math.sin(angle)*r;
+  spawnParticles(px, py, count, hsl, 80, 0.7);
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function getRingR(ring){
+  return maxR * RING_R_FRAC[ring];
+}
+
+function getRingColor(ring, alpha){
+  const c = RING_COLORS[ring];
+  return `hsla(${c.h},${c.s}%,${c.l}%,${alpha||1})`;
+}
+
+function normalizeAngle(a){
+  while(a > Math.PI) a -= Math.PI*2;
+  while(a < -Math.PI) a += Math.PI*2;
+  return a;
+}
+
+function showToast(msg){
+  toast = msg;
+  toastTimer = 2.0;
+}
+
+function triggerShake(mag, dur){
+  shake.mag = mag; shake.dur = dur; shake.t = dur;
+}
+
+function triggerSlingshot(){
+  slingshotArmed = false;
+  // slow-mo for 1s, then bonus
+  score += 5 * multiplier;
+  combo += 2;
+  multiplier = Math.min(8, multiplier + 1);
+  const r = getRingR(shipRing);
+  const px = CX + Math.cos(shipAngle)*r;
+  const py = CY + Math.sin(shipAngle)*r;
+  spawnParticles(px, py, 30, `hsla(60,100%,70%,`, 120, 1.2);
+  triggerShake(4, 200);
+  showToast('SLINGSHOT! +' + (5*multiplier));
+}
+
+function doShift(){
+  // combo breaks on shift
+  combo = 0;
+  multiplier = 1;
+  shipRing = (shipRing + 1) % RING_COUNT;
+  const r = getRingR(shipRing);
+  const px = CX + Math.cos(shipAngle)*r;
+  const py = CY + Math.sin(shipAngle)*r;
+  spawnParticles(px, py, 8, `hsla(${RING_COLORS[shipRing].h},80%,70%,`, 60, 0.4);
+  triggerShake(2, 80);
+}
+
+// ─── Collision ────────────────────────────────────────────────────────────────
+function checkCollision(dt){
+  const ang = shipAngle;
+  let hitHazard = false;
+  for(const seg of segments){
+    if(seg.ring !== shipRing) continue;
+    const a0 = seg.a0 + (seg.drift||0)*worldAngle;
+    const a1 = seg.a1 + (seg.drift||0)*worldAngle;
+    // check if ship angle (mod 2PI mapped) is inside [a0,a1]
+    // worldAngle increases; ship angle relative to world
+    const relAng = worldAngle + (shipAngle - (-Math.PI/2));
+    if(relAng >= a0 && relAng <= a1){
+      if(seg.type === 'hazard'){
+        // check slingshot window
+        const timeToImpact = (a0 - relAng) / speed;
+        if(slingshotArmed){
+          triggerSlingshot();
+          seg.type = 'gate'; // convert to safe
+        } else {
+          hitHazard = true;
+        }
+        break;
+      } else if(seg.type === 'gate' && !seg.scored){
+        seg.scored = true;
+        score += multiplier;
+        combo++;
+        multiplier = Math.min(8, 1 + Math.floor(combo/3));
+        spawnRingParticles(shipRing, shipAngle, 12, `hsla(${RING_COLORS[shipRing].h},90%,65%,`);
+        checkMilestone();
+      }
+    }
+  }
+  return hitHazard;
+}
+
+function checkMilestone(){
+  const ms = [10,25,50,100];
+  const msgs = ['New Pattern!','Drift Online!','Storm Incoming!','Legendary!'];
+  for(let i=0;i<ms.length;i++){
+    if(!milestones[ms[i]] && score >= ms[i]){
+      milestones[ms[i]] = true;
+      showToast(msgs[i]);
+    }
+  }
+}
+
+function armSlingshot(){
+  if(slingshotCooldown) return;
+  slingshotArmed = true;
+  slingshotTimer = SLINGSHOT_WINDOW;
+}
+
+// ─── Input ────────────────────────────────────────────────────────────────────
+function onInput(){
+  if(state === 'start'){
+    startGame();
+  } else if(state === 'playing'){
+    armSlingshot();
+    doShift();
+  } else if(state === 'gameover'){
+    if(gameoverTimer <= 0) startGame();
+  }
+}
+
+canvas.addEventListener('pointerdown', e => { e.preventDefault(); onInput(); });
+document.addEventListener('keydown', e => {
+  if(e.code === 'Space' || e.code === 'Enter') onInput();
+});
+
+// ─── Share / Challenge ────────────────────────────────────────────────────────
+function shareScore(){
+  const seed = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const url = `https://balinti.github.io/orbit-shift/?challengeScore=${score}&seed=${seed}`;
+  const text = `I scored ${score} in Orbit Shift! Can you beat me? 🚀`;
+  if(navigator.share){
+    navigator.share({title:'Orbit Shift', text, url}).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(url + '\n' + text).then(()=>showToast('Link copied!')).catch(()=>{});
+  }
+}
+
+// ─── Game Lifecycle ────────────────────────────────────────────────────────────
+function startGame(){
+  state = 'playing';
+  score = 0; combo = 0; multiplier = 1;
+  worldAngle = 0; genAngle = Math.PI * 2;
+  shipRing = 0; shipAngle = -Math.PI/2;
+  speed = BASE_SPEED; difficulty = 0;
+  segments = []; particles = []; trail = [];
+  frozen = false; frozenTimer = 0;
+  shake = {x:0,y:0,t:0,dur:0,mag:0};
+  toast = null; toastTimer = 0;
+  slingshotArmed = false; slingshotCooldown = false; slingshotTimer = 0;
+  milestones = {10:false,25:false,50:false,100:false};
+  gameoverTimer = 0;
+  genSegments();
+}
+
+function killShip(){
+  state = 'gameover';
+  if(score > bestScore){
+    bestScore = score;
+    localStorage.setItem(BEST_KEY, bestScore);
+  }
+  const r = getRingR(shipRing);
+  const px = CX + Math.cos(shipAngle)*r;
+  const py = CY + Math.sin(shipAngle)*r;
+  spawnParticles(px, py, 50, `hsla(0,100%,60%,`, 150, 1.5);
+  triggerShake(12, SHAKE_DURATION);
+  frozen = true; frozenTimer = FREEZE_DURATION / 1000;
+  gameoverTimer = 1.5;
+}
+
+// ─── Update ────────────────────────────────────────────────────────────────────
+function update(dt){
+  // Shake
+  if(shake.t > 0){
+    shake.t -= dt;
+    const frac = shake.t / shake.dur;
+    shake.x = (Math.random()-0.5)*shake.mag*frac;
+    shake.y = (Math.random()-0.5)*shake.mag*frac;
+  } else { shake.x=0; shake.y=0; }
+
+  // Particles
+  for(let i=particles.length-1;i>=0;i--){
+    const p = particles[i];
+    p.x += p.vx*dt; p.y += p.vy*dt;
+    p.vx *= 0.92; p.vy *= 0.92;
+    p.life -= dt;
+    if(p.life <= 0) particles.splice(i,1);
+  }
+
+  // Toast
+  if(toastTimer > 0) toastTimer -= dt;
+
+  if(state !== 'playing') {
+    if(state === 'gameover') gameoverTimer -= dt;
+    return;
+  }
+
+  // Frozen (brief death freeze)
+  if(frozen){
+    frozenTimer -= dt;
+    if(frozenTimer <= 0) frozen = false;
+    return;
+  }
+
+  // Slingshot window
+  if(slingshotArmed){
+    slingshotTimer -= dt;
+    if(slingshotTimer <= 0){ slingshotArmed = false; slingshotCooldown = true; setTimeout(()=>slingshotCooldown=false,500); }
+  }
+
+  // Difficulty ramp
+  difficulty = Math.min(1, worldAngle / (Math.PI * 40));
+  speed = BASE_SPEED + difficulty * 1.2;
+
+  // Advance world
+  worldAngle += speed * dt;
+  shipAngle = -Math.PI/2; // ship stays at top visually; world rotates around it
+
+  // Background hue
+  bgHue = (bgHue + 3*dt) % 360;
+
+  // Generate segments
+  genSegments();
+
+  // Cull old segments
+  segments = segments.filter(s => s.a1 + (s.drift||0)*worldAngle > worldAngle - 0.5);
+
+  // Trail
+  const r = getRingR(shipRing);
+  trail.unshift({x: CX + Math.cos(shipAngle)*r, y: CY + Math.sin(shipAngle)*r, ring:shipRing});
+  if(trail.length > TRAIL_COUNT*3) trail.pop();
+
+  // Collision
+  if(checkCollision(dt)){
+    killShip();
+  }
+}
+
+// ─── Draw ──────────────────────────────────────────────────────────────────────
+function drawRings(){
+  for(let ring=0; ring<RING_COUNT; ring++){
+    const r = getRingR(ring);
+    const c = RING_COLORS[ring];
+    ctx.beginPath();
+    ctx.arc(CX, CY, r, 0, Math.PI*2);
+    ctx.strokeStyle = `hsla(${c.h},${c.s}%,${c.l}%,0.18)`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+}
+
+function drawSegments(){
+  const time = performance.now()/1000;
+  for(const seg of segments){
+    const ring = seg.ring;
+    const r = getRingR(ring);
+    const c = RING_COLORS[ring];
+    // Convert world angles to canvas angles
+    const offset = -Math.PI/2 - worldAngle;
+    const drift = (seg.drift||0)*worldAngle;
+    const a0 = seg.a0 + drift + offset;
+    const a1 = seg.a1 + drift + offset;
+    if(seg.type === 'hazard'){
+      ctx.beginPath();
+      ctx.arc(CX, CY, r, a0, a1);
+      ctx.strokeStyle = `hsla(${c.h},${c.s}%,${c.l}%,0.9)`;
+      ctx.lineWidth = 10;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      // dark overlay to make it look blocked
+      ctx.beginPath();
+      ctx.arc(CX, CY, r, a0, a1);
+      ctx.strokeStyle = `rgba(0,0,0,0.5)`;
+      ctx.lineWidth = 6;
+      ctx.stroke();
+    } else {
+      // Gate: pulsing bright arc
+      const pulse = 0.6 + 0.4*Math.sin(time*4 + ring);
+      ctx.beginPath();
+      ctx.arc(CX, CY, r, a0, a1);
+      ctx.strokeStyle = `hsla(${c.h},100%,${70+pulse*20}%,${0.5+pulse*0.5})`;
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.shadowColor = `hsla(${c.h},100%,70%,0.8)`;
+      ctx.shadowBlur = 8;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+  }
+}
+
+function drawShip(){
+  // Trail
+  for(let i=trail.length-1;i>=0;i--){
+    const t = trail[i];
+    const alpha = (1 - i/trail.length) * 0.3;
+    const c = RING_COLORS[t.ring];
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, SHIP_SIZE*(1-i/trail.length)*0.8, 0, Math.PI*2);
+    ctx.fillStyle = `hsla(${c.h},80%,70%,${alpha})`;
+    ctx.fill();
+  }
+
+  const r = getRingR(shipRing);
+  const sx = CX + Math.cos(shipAngle)*r;
+  const sy = CY + Math.sin(shipAngle)*r;
+  const c = RING_COLORS[shipRing];
+
+  // Glow
+  ctx.beginPath();
+  ctx.arc(sx, sy, SHIP_SIZE+4, 0, Math.PI*2);
+  ctx.fillStyle = `hsla(${c.h},90%,70%,0.15)`;
+  ctx.fill();
+
+  // Ship body
+  ctx.beginPath();
+  // Triangle pointing tangent to orbit
+  const tx = -Math.sin(shipAngle);
+  const ty =  Math.cos(shipAngle);
+  ctx.moveTo(sx + tx*SHIP_SIZE, sy + ty*SHIP_SIZE);
+  ctx.lineTo(sx - tx*SHIP_SIZE - Math.cos(shipAngle)*SHIP_SIZE*0.5,
+             sy - ty*SHIP_SIZE - Math.sin(shipAngle)*SHIP_SIZE*0.5);
+  ctx.lineTo(sx - tx*SHIP_SIZE + Math.cos(shipAngle)*SHIP_SIZE*0.5,
+             sy - ty*SHIP_SIZE + Math.sin(shipAngle)*SHIP_SIZE*0.5);
+  ctx.closePath();
+  ctx.fillStyle = `hsl(${c.h},90%,80%)`;
+  ctx.shadowColor = `hsl(${c.h},100%,70%)`;
+  ctx.shadowBlur = 12;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Slingshot armed indicator
+  if(slingshotArmed){
+    ctx.beginPath();
+    ctx.arc(sx, sy, SHIP_SIZE+8, 0, Math.PI*2);
+    ctx.strokeStyle = `hsla(60,100%,70%,${0.5+0.5*Math.sin(performance.now()*0.02)})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+}
+
+function drawParticles(){
+  for(const p of particles){
+    const alpha = p.life / p.maxLife;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size*alpha, 0, Math.PI*2);
+    ctx.fillStyle = p.hsl + alpha + ')';
+    ctx.fill();
+  }
+}
+
+function drawPlanet(){
+  const t = performance.now()/1000;
+  // Atmosphere
+  const grad = ctx.createRadialGradient(CX, CY, 0, CX, CY, maxR*0.22);
+  grad.addColorStop(0, `hsla(${bgHue+30},70%,60%,0.3)`);
+  grad.addColorStop(0.5, `hsla(${bgHue},60%,40%,0.15)`);
+  grad.addColorStop(1, `hsla(${bgHue},50%,20%,0)`);
+  ctx.beginPath();
+  ctx.arc(CX, CY, maxR*0.22, 0, Math.PI*2);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Planet
+  const pg = ctx.createRadialGradient(CX-5, CY-5, 2, CX, CY, maxR*0.14);
+  pg.addColorStop(0, `hsl(${bgHue+20},60%,50%)`);
+  pg.addColorStop(1, `hsl(${bgHue},40%,20%)`);
+  ctx.beginPath();
+  ctx.arc(CX, CY, maxR*0.14, 0, Math.PI*2);
+  ctx.fillStyle = pg;
+  ctx.fill();
+
+  // Planet rings decoration
+  ctx.beginPath();
+  ctx.ellipse(CX, CY, maxR*0.2, maxR*0.06, 0.3, 0, Math.PI*2);
+  ctx.strokeStyle = `hsla(${bgHue+40},70%,60%,0.2)`;
+  ctx.lineWidth = 3;
+  ctx.stroke();
+}
+
+function drawBackground(){
+  const grad = ctx.createRadialGradient(CX, CY, 0, CX, CY, Math.max(W,H));
+  grad.addColorStop(0, `hsl(${bgHue},30%,8%)`);
+  grad.addColorStop(1, `hsl(${bgHue+40},20%,3%)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  // Stars
+  // (pre-computed star positions using seeded pattern)
+  drawStars();
+}
+
+let starCache = null;
+function drawStars(){
+  if(!starCache){
+    starCache = [];
+    const seed = 42;
+    for(let i=0;i<80;i++){
+      const sx = ((seed*i*137+17)%1000)/1000;
+      const sy = ((seed*i*211+37)%1000)/1000;
+      const sb = 0.3 + ((seed*i*313+7)%100)/200;
+      starCache.push({x:sx, y:sy, b:sb});
+    }
+  }
+  const t = performance.now()/3000;
+  for(const s of starCache){
+    const alpha = s.b*(0.6 + 0.4*Math.sin(t + s.x*10));
+    ctx.beginPath();
+    ctx.arc(s.x*W, s.y*H, 1, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.fill();
+  }
+}
+
+function drawHUD(){
+  if(state !== 'playing') return;
+  // Score
+  ctx.textAlign = 'center';
+  ctx.font = `bold ${Math.round(H*0.055)}px 'Segoe UI',sans-serif`;
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 6;
+  ctx.fillStyle = 'rgba(255,255,255,0.95)';
+  ctx.fillText(score, CX, H*0.09);
+  ctx.shadowBlur = 0;
+
+  // Multiplier
+  if(multiplier > 1){
+    ctx.font = `bold ${Math.round(H*0.03)}px 'Segoe UI',sans-serif`;
+    ctx.fillStyle = `hsla(40,100%,70%,0.9)`;
+    ctx.fillText(`x${multiplier}`, CX, H*0.13);
+  }
+
+  // Combo
+  if(combo > 0){
+    ctx.font = `${Math.round(H*0.025)}px 'Segoe UI',sans-serif`;
+    ctx.fillStyle = `rgba(255,255,255,0.5)`;
+    ctx.fillText(`combo ${combo}`, CX, H*0.16);
+  }
+
+  // Ring indicator (dots top-right)
+  for(let i=0;i<RING_COUNT;i++){
+    const c = RING_COLORS[i];
+    const dotX = W - 20;
+    const dotY = 30 + i*18;
+    ctx.beginPath();
+    ctx.arc(dotX, dotY, 6, 0, Math.PI*2);
+    ctx.fillStyle = i===shipRing ? `hsl(${c.h},90%,65%)` : `hsla(${c.h},50%,40%,0.4)`;
+    ctx.fill();
+    if(i===shipRing){
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, 9, 0, Math.PI*2);
+      ctx.strokeStyle = `hsla(${c.h},90%,65%,0.4)`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
+  // Toast
+  if(toast && toastTimer > 0){
+    const alpha = Math.min(1, toastTimer * 2);
+    ctx.textAlign = 'center';
+    ctx.font = `bold ${Math.round(H*0.035)}px 'Segoe UI',sans-serif`;
+    ctx.fillStyle = `rgba(255,220,80,${alpha})`;
+    ctx.shadowColor = 'rgba(255,180,0,0.5)';
+    ctx.shadowBlur = 10;
+    ctx.fillText(toast, CX, H*0.25);
+    ctx.shadowBlur = 0;
+  }
+
+  // Best
+  ctx.textAlign = 'left';
+  ctx.font = `${Math.round(H*0.022)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.fillText(`Best: ${bestScore}`, 12, H*0.055);
+}
+
+function roundRect(x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y);
+  ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r);
+  ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h);
+  ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r);
+  ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+
+function drawButton(label, cx, cy, w, h, col){
+  const x = cx-w/2, y = cy-h/2;
+  roundRect(x, y, w, h, h/2);
+  ctx.fillStyle = col;
+  ctx.fill();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `bold ${Math.round(h*0.42)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = '#fff';
+  ctx.shadowColor = 'rgba(0,0,0,0.4)';
+  ctx.shadowBlur = 4;
+  ctx.fillText(label, cx, cy);
+  ctx.shadowBlur = 0;
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawStartScreen(){
+  // Panel
+  const pw = W*0.82, ph = H*0.58;
+  const px = (W-pw)/2, py = (H-ph)/2;
+  roundRect(px, py, pw, ph, 20);
+  ctx.fillStyle = 'rgba(0,0,20,0.7)';
+  ctx.fill();
+  roundRect(px, py, pw, ph, 20);
+  ctx.strokeStyle = `hsla(${bgHue},60%,60%,0.4)`;
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+
+  // Title
+  ctx.font = `bold ${Math.round(H*0.072)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = `hsl(${bgHue+60},90%,75%)`;
+  ctx.shadowColor = `hsl(${bgHue+60},100%,60%)`;
+  ctx.shadowBlur = 20;
+  ctx.fillText('ORBIT', CX, py+ph*0.22);
+  ctx.fillText('SHIFT', CX, py+ph*0.36);
+  ctx.shadowBlur = 0;
+
+  ctx.font = `${Math.round(H*0.025)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.fillText('Tap to shift orbit. Dodge hazards.', CX, py+ph*0.5);
+  ctx.fillText('Pass gates to score.', CX, py+ph*0.6);
+
+  // Challenge banner
+  if(challengeScore > 0){
+    ctx.font = `bold ${Math.round(H*0.028)}px 'Segoe UI',sans-serif`;
+    ctx.fillStyle = `hsl(40,100%,70%)`;
+    ctx.fillText(`⚡ Challenge: Beat ${challengeScore}!`, CX, py+ph*0.74);
+  }
+
+  drawButton('TAP TO PLAY', CX, py+ph+30, W*0.55, H*0.065, `hsla(${bgHue+60},80%,45%,0.9)`);
+
+  // Best score
+  if(bestScore > 0){
+    ctx.font = `${Math.round(H*0.025)}px 'Segoe UI',sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.fillText(`Best: ${bestScore}`, CX, py+ph+30+H*0.065+20);
+  }
+}
+
+function drawGameoverScreen(){
+  const isNew = score >= bestScore && score > 0;
+
+  const pw = W*0.82, ph = H*0.52;
+  const px = (W-pw)/2, py = (H-ph)/2 - H*0.04;
+  roundRect(px, py, pw, ph, 20);
+  ctx.fillStyle = 'rgba(0,0,10,0.8)';
+  ctx.fill();
+  roundRect(px, py, pw, ph, 20);
+  ctx.strokeStyle = 'rgba(255,60,60,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+
+  ctx.font = `bold ${Math.round(H*0.05)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = '#ff5555';
+  ctx.shadowColor = 'rgba(255,0,0,0.5)';
+  ctx.shadowBlur = 15;
+  ctx.fillText('GAME OVER', CX, py+ph*0.2);
+  ctx.shadowBlur = 0;
+
+  ctx.font = `${Math.round(H*0.075)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = isNew ? `hsl(40,100%,70%)` : '#fff';
+  if(isNew){
+    ctx.shadowColor = 'rgba(255,200,0,0.7)';
+    ctx.shadowBlur = 15;
+  }
+  ctx.fillText(score, CX, py+ph*0.46);
+  ctx.shadowBlur = 0;
+
+  if(isNew){
+    ctx.font = `bold ${Math.round(H*0.028)}px 'Segoe UI',sans-serif`;
+    ctx.fillStyle = 'hsl(40,100%,70%)';
+    ctx.fillText('NEW BEST!', CX, py+ph*0.6);
+  } else {
+    ctx.font = `${Math.round(H*0.025)}px 'Segoe UI',sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillText(`Best: ${bestScore}`, CX, py+ph*0.6);
+  }
+
+  // Multiplier info
+  ctx.font = `${Math.round(H*0.022)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.fillText(`Max combo: ${combo}  |  Multiplier: x${multiplier}`, CX, py+ph*0.74);
+
+  if(gameoverTimer <= 0){
+    drawButton('PLAY AGAIN', CX, py+ph+30, W*0.5, H*0.065, 'hsla(220,70%,45%,0.9)');
+    drawButton('SHARE', CX, py+ph+30+H*0.075, W*0.38, H*0.052, 'hsla(160,60%,35%,0.9)');
+  } else {
+    ctx.font = `${Math.round(H*0.022)}px 'Segoe UI',sans-serif`;
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.fillText('...', CX, py+ph+45);
+  }
+}
+
+// Share button hit test on gameover
+canvas.addEventListener('pointerdown', e => {
+  if(state !== 'gameover' || gameoverTimer > 0) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) * (W / rect.width);
+  const my = (e.clientY - rect.top) * (H / rect.height);
+  const ph = H*0.52;
+  const py = (H-ph)/2 - H*0.04;
+  const shareY = py+ph+30+H*0.075;
+  if(Math.abs(my-shareY) < H*0.04 && Math.abs(mx-CX) < W*0.22){
+    shareScore();
+  }
+}, {passive:false});
+
+// ─── Main Render ──────────────────────────────────────────────────────────────
+function render(){
+  ctx.save();
+  ctx.translate(shake.x, shake.y);
+
+  drawBackground();
+  drawPlanet();
+  drawRings();
+  drawSegments();
+  drawParticles();
+  if(state !== 'gameover' || frozen) drawShip();
+  drawHUD();
+
+  if(state === 'start') drawStartScreen();
+  if(state === 'gameover') drawGameoverScreen();
+
+  ctx.restore();
+}
+
+// ─── Loop ─────────────────────────────────────────────────────────────────────
+function loop(ts){
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(ts => { lastTime = ts; loop(ts); });
+
+})();
+</script>
+</body>
+</html>
