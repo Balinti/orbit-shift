@@ -1,870 +1,698 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Orbit Shift - Free HTML5 Game</title>
-<meta name="description" content="Play Orbit Shift - Dodge asteroids while your controls randomly reverse to survive longer in space.">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<meta name="robots" content="index, follow">
-<meta name="theme-color" content="#0a0a1a">
-<link rel="canonical" href="https://balinti.github.io/orbit-shift/">
-<meta property="og:type" content="website">
-<meta property="og:title" content="Orbit Shift - Free HTML5 Game">
-<meta property="og:description" content="Play Orbit Shift - Dodge asteroids while your controls randomly reverse to survive longer in space.">
-<meta property="og:url" content="https://balinti.github.io/orbit-shift/">
-<meta property="og:image" content="https://balinti.github.io/orbit-shift/og.png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Orbit Shift - Free HTML5 Game">
-<meta name="twitter:description" content="Play Orbit Shift - Dodge asteroids while your controls randomly reverse to survive longer in space.">
-<meta name="twitter:image" content="https://balinti.github.io/orbit-shift/og.png">
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4099346100621490" crossorigin="anonymous"></script>
-<script type="application/ld+json">
-{"@context":"https://schema.org","@type":"VideoGame","name":"Orbit Shift","description":"Hyper-casual HTML5 space game. Dodge asteroids, ride the Polarity Gate for score multipliers.","url":"https://balinti.github.io/orbit-shift/","genre":"Hyper-Casual","gamePlatform":"Web Browser","applicationCategory":"Game"}
-</script>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{width:100%;height:100%;background:#060612;font-family:'Segoe UI',system-ui,sans-serif;color:#fff}
-body{display:flex;flex-direction:column;align-items:center;overflow-x:hidden;overflow-y:auto}
-header{width:100%;max-width:420px;text-align:center;padding:5px 0 2px;flex-shrink:0}
-header h1{font-size:12px;font-weight:700;letter-spacing:.15em;color:rgba(255,255,255,.2);text-transform:uppercase}
-#game-wrap{position:relative;width:100%;max-width:420px;height:100vh;max-height:750px;flex-shrink:0;display:flex;flex-direction:column}
-canvas{display:block;width:100%;flex:1;min-height:0;touch-action:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
-footer{width:100%;max-width:420px;flex-shrink:0;padding:4px 10px 8px}
-#seo{font-size:10px;color:rgba(255,255,255,.16);line-height:1.45}
-#seo summary{cursor:pointer;color:rgba(255,255,255,.22);outline:none;user-select:none}
-#seo p{margin-top:4px}
-footer nav{text-align:right;margin-top:2px}
-footer nav a{font-size:10px;color:rgba(255,255,255,.18);text-decoration:none;cursor:pointer}
-footer nav a:hover{color:rgba(255,255,255,.38)}
-#pm{display:none;position:fixed;inset:0;background:rgba(0,0,0,.87);z-index:999;align-items:center;justify-content:center;padding:16px}
-#pm.open{display:flex}
-#pb{background:#0c0c1e;border:1px solid rgba(130,130,255,.28);border-radius:14px;max-width:370px;width:100%;padding:20px;max-height:82vh;overflow-y:auto}
-#pb h2{font-size:15px;margin-bottom:8px;color:#aabbff}
-#pb p{font-size:11.5px;color:rgba(255,255,255,.6);line-height:1.55;margin-bottom:5px}
-#pb a{color:#aabbff}
-#pclose{margin-top:12px;padding:7px 0;background:rgba(100,110,255,.22);border:1px solid rgba(130,140,255,.35);border-radius:8px;color:#fff;cursor:pointer;font-size:13px;width:100%}
-</style>
+  <meta charset="UTF-8">
+  <title>Orbit Shift - Free HTML5 Game</title>
+  <meta name="description" content="Play Orbit Shift - Tap to switch colors and keep your spaceship alive as speed steadily climbs.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a1a">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Orbit Shift - Free HTML5 Game">
+  <meta property="og:description" content="Tap to switch orbit lanes and match polarity gates. How long can you survive?">
+  <meta property="og:url" content="https://balinti.github.io/orbit-shift/">
+  <meta property="og:image" content="https://balinti.github.io/orbit-shift/preview.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Orbit Shift - Free HTML5 Game">
+  <meta name="twitter:description" content="Tap to switch orbit lanes and match polarity gates. How long can you survive?">
+  <meta name="twitter:image" content="https://balinti.github.io/orbit-shift/preview.png">
+
+  <!-- AdSense -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4099346100621490" crossorigin="anonymous"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #0a0a1a;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-start;
+      overflow: hidden;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #ccc;
+    }
+    #gameRoot {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      height: 100svh;
+      height: 100vh; /* fallback */
+      max-height: 750px;
+      flex-shrink: 0;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: manipulation;
+      cursor: pointer;
+    }
+    #about {
+      max-width: 420px;
+      width: 100%;
+      padding: 12px 16px 20px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: #667;
+      text-align: center;
+    }
+    #about h2 { font-size: 13px; color: #889; margin-bottom: 4px; }
+    #about a  { color: #7af; text-decoration: none; }
+  </style>
 </head>
 <body>
-<header><h1>Orbit&nbsp;Shift</h1></header>
-<div id="game-wrap"><canvas id="c"></canvas></div>
-<footer>
-  <details id="seo">
-    <summary>How to Play Orbit Shift</summary>
-    <p>Orbit Shift is a free hyper-casual HTML5 space survival game playable instantly in any modern browser — no download or account required. Your spaceship automatically orbits a glowing star at the center of the screen. The orbit has two rings: an Inner Ring (close to the star) and an Outer Ring (farther away). Tap the screen, click your mouse, or press Space or Enter to instantly switch your ship between the two rings.</p>
-    <p>Asteroids flow along both orbit rings, traveling in arcs at various speeds and directions. If an asteroid reaches the same angle on the same ring as your ship, you collide and the game ends. Time your ring switches carefully to dodge every incoming rock. Narrowly avoiding an asteroid — a near-miss — earns you bonus points and builds a combo streak that raises your score multiplier.</p>
-    <p>Keep an eye out for the Polarity Gate — a glowing arc segment that appears on one of the rings. When the gate turns bright and active, flying your ship through it flips your orbit direction, inverting your controls for several seconds. During this inversion window, your score multiplier rises to 2x or even 3x, making it a high-risk, high-reward play. You can always avoid the gate by staying on the other ring. Your best score and total runs are saved locally in your browser. Challenge a friend by sharing your score link!</p>
-  </details>
-  <nav><a id="pl">Privacy Policy</a></nav>
-</footer>
-<div id="pm" role="dialog" aria-modal="true" aria-label="Privacy Policy">
-  <div id="pb">
-    <h2>Privacy Policy</h2>
-    <p>Orbit Shift is a free browser game hosted on GitHub Pages.</p>
-    <p><strong>Local Storage:</strong> Your high score and run count are stored in your browser's localStorage only. This data never leaves your device.</p>
-    <p><strong>Advertising:</strong> This site uses Google AdSense (ca-pub-4099346100621490). Google may serve personalized ads using cookies. See <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener">Google's ad policy</a>. Opt out at <a href="https://adssettings.google.com" target="_blank" rel="noopener">adssettings.google.com</a>.</p>
-    <p><strong>Analytics:</strong> We collect no analytics. GitHub Pages may log anonymous request counts.</p>
-    <p><strong>Contact:</strong> Open an issue at <a href="https://github.com/Balinti/orbit-shift" target="_blank" rel="noopener">github.com/Balinti/orbit-shift</a>.</p>
-    <p>Last updated: February 2026.</p>
-    <button id="pclose">Close</button>
-  </div>
+<div id="gameRoot">
+  <canvas id="c"></canvas>
 </div>
+<section id="about">
+  <h2>How to Play — Orbit Shift</h2>
+  <p>Your ship orbits a planet on one of two rings. <strong>Tap / Space / Enter</strong> to change polarity or switch lanes via a Slingshot Window. Match the gate's color &amp; symbol to score points. One shield saves your first mistake. Survive as long as possible!</p>
+</section>
+
 <script>
-(function(){
 'use strict';
+// ─── Constants ─────────────────────────────────────────────────────────────
+const LS_KEY    = 'orbitshift_highscore';
+const DPR       = Math.min(window.devicePixelRatio || 1, 2);
+const TAU       = Math.PI * 2;
+const POLARITIES = [
+  { hue: 30,  label: '●', name: 'dot'      },  // orange
+  { hue: 200, label: '▲', name: 'triangle' },  // cyan
+  { hue: 310, label: '◆', name: 'diamond'  },  // magenta
+];
 
-// ── Privacy modal ─────────────────────────────────────────────────────────────
-const pm=document.getElementById('pm');
-document.getElementById('pl').addEventListener('click',e=>{e.preventDefault();pm.classList.add('open');});
-document.getElementById('pclose').addEventListener('click',()=>pm.classList.remove('open'));
-pm.addEventListener('click',e=>{if(e.target===pm)pm.classList.remove('open');});
+// ─── Canvas / layout ───────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+let W, H, cx, cy, innerR, outerR;
 
-// ── Config ────────────────────────────────────────────────────────────────────
-const C={
-  LS_BEST:'osgr_highscore_v1', LS_RUNS:'osgr_runs_v1',
-  PLAYER_R:7,
-  ORBIT_SPD:1.85,  // rad/s orbital speed
-  SWITCH_CD:0.15,  // ring-switch cooldown s
-  SCORE_PS:10,     // points per second
-  NEAR_BONUS:25,
-  NEAR_EXTRA:0.18, // angle radians added to hit-threshold for near-miss zone
-  GATE_TELE:2.4,   // telegraph phase seconds
-  GATE_ACT:2.0,    // active phase seconds
-  GATE_ARC:0.60,   // half-arc of gate in radians
-  GATE_CD_MIN:10, GATE_CD_MAX:18,
-  INV_DUR:5.5,     // inversion duration seconds
-  HIT_STOP:0.065,  // seconds
-  GO_LOCK:1.2,     // gameover lock before retry
-  MAX_PART:240,
-  MAX_AST:7,
-};
+function resize() {
+  const root = document.getElementById('gameRoot');
+  const rect  = root.getBoundingClientRect();
+  W = rect.width;  H = rect.height;
+  canvas.width  = W * DPR;
+  canvas.height = H * DPR;
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  cx = W / 2;
+  cy = H / 2 + H * 0.04;
+  const r = Math.min(W, H) / 2;
+  innerR = r * 0.42;
+  outerR = r * 0.70;
+}
+window.addEventListener('resize', resize);
+resize();
 
-// ── Canvas / DPR ──────────────────────────────────────────────────────────────
-const canvas=document.getElementById('c');
-const ctx=canvas.getContext('2d');
-const DPR=Math.min(window.devicePixelRatio||1,2);
-let W,H,CX,CY,coreR,innerR,outerR;
+// ─── Math helpers ──────────────────────────────────────────────────────────
+function angDiff(a, b) {
+  let d = ((b - a) % TAU + TAU) % TAU;
+  if (d > Math.PI) d -= TAU;
+  return d;
+}
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function rand(lo, hi)  { return lo + Math.random() * (hi - lo); }
+function randInt(lo, hi) { return Math.floor(rand(lo, hi + 1)); }
+function hsl(h, s, l, a = 1) { return `hsla(${h},${s}%,${l}%,${a})`; }
 
-function resize(){
-  const r=canvas.getBoundingClientRect();
-  W=r.width; H=r.height;
-  canvas.width=Math.round(W*DPR); canvas.height=Math.round(H*DPR);
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-  CX=W/2; CY=H/2;
-  const m=Math.min(W,H)*0.5;
-  coreR=m*0.11;
-  innerR=m*0.52;
-  outerR=m*0.86;
+// ─── State ─────────────────────────────────────────────────────────────────
+let state, shake, particles, gates;
+
+function initState() {
+  state = {
+    phase:      'start',   // 'start' | 'playing' | 'gameover'
+    score:      0,
+    best:       parseInt(localStorage.getItem(LS_KEY)) || 0,
+    t:          0,
+    streak:     0,
+    shield:     true,
+    shieldBreak: false,
+    unlocked3rd: false,
+    player: {
+      ring:    'inner',
+      angle:   -Math.PI / 2,
+      dir:     1,          // +1 CW, -1 CCW
+      polIdx:  0,
+      speed:   1.3,
+    },
+    sling: {
+      ang:  Math.PI / 2,  // opposite side from player start
+      half: 0.55,
+      drift: 0,
+    },
+    diff: {
+      gateInterval: 2.8,
+      nextGate:     2.2,
+      speed:        1.3,
+    },
+  };
+  shake     = { x: 0, y: 0, mag: 0 };
+  particles = [];
+  gates     = [];
 }
 
-// ── Stars ─────────────────────────────────────────────────────────────────────
-const STARS=Array.from({length:80},(_,i)=>({
-  fx:((137*i*1234567+17)%10000)/10000,
-  fy:((211*i*9876543+37)%10000)/10000,
-  b:0.12+(i*13%100)/280, r:0.45+(i%3)*0.42,
-}));
-
-// ── Persistent ────────────────────────────────────────────────────────────────
-let best=parseInt(localStorage.getItem(C.LS_BEST)||'0',10);
-const urlP=new URLSearchParams(location.search);
-const challengeVal=parseInt(urlP.get('challenge')||'0',10);
-
-// ── State ─────────────────────────────────────────────────────────────────────
-let state='start'; // 'start'|'playing'|'gameover'
-let lastTs=0;
-
-// Player
-let player=null; // {ring,angle,dir,switchCd}
-// ring:'inner'|'outer', dir:1|-1
-
-// Asteroids
-let asts=[]; // {ring,angle,speed,r,hue,nearState}
-
-// Gate
-let gate=null; // {ring,mid,phase,timer,triggered}
-let gateCd=7;
-
-// Inversion
-let inverted=false, invTimer=0;
-
-// Scoring
-let elapsed=0, scoreF=0, score=0;
-let combo=0, mult=1, peakMult=1;
-let nearStreak=0, peakStreak=0;
-let bgHue=220;
-
-// Visuals
-let parts=[]; // particles
-let floats=[]; // floating text
-let shake={x:0,y:0,t:0,dur:1,mag:0};
-let flashAlpha=0;  // red death flash
-let trailTick=0;
-
-// Timers
-let spawnT=1.5, hitStopT=0, goLock=0;
-
-// ── Difficulty ────────────────────────────────────────────────────────────────
-function diff(){
-  if(elapsed<10)  return{int:2.5,spd:1.1};
-  if(elapsed<25)  return{int:1.9,spd:1.5};
-  if(elapsed<45)  return{int:1.5,spd:2.0};
-  if(elapsed<70)  return{int:1.2,spd:2.4};
-  return               {int:0.9,spd:2.9};
-}
-function gMult(){return elapsed<30?2:3;}
-
-// ── Math helpers ──────────────────────────────────────────────────────────────
-function angDiff(a,b){
-  let d=((b-a)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
-  return d>Math.PI?d-Math.PI*2:d;
-}
-function ringR(ring){return ring==='inner'?innerR:outerR;}
-function ringXY(ring,ang){const r=ringR(ring);return[CX+Math.cos(ang)*r,CY+Math.sin(ang)*r];}
-
-// ── Shake ─────────────────────────────────────────────────────────────────────
-function shk(mag,ms){if(mag>shake.mag){shake.mag=mag;shake.dur=ms/1000;shake.t=ms/1000;}}
-
-// ── Particles ─────────────────────────────────────────────────────────────────
-function addP(x,y,vx,vy,hsl,sz,life){
-  if(parts.length>=C.MAX_PART)return;
-  parts.push({x,y,vx,vy,hsl,sz,life,ml:life});
-}
-function burst(x,y,n,hsl,spd,life){
-  for(let i=0;i<n;i++){
-    const a=Math.random()*Math.PI*2,s=spd*(0.3+Math.random()*0.9);
-    addP(x,y,Math.cos(a)*s,Math.sin(a)*s,hsl,1.5+Math.random()*3,life*(0.4+Math.random()*0.8));
-  }
-}
-function addFloat(x,y,text,col){
-  floats.push({x,y,text,col,life:1.2,ml:1.2,vy:-32});
+function numPol() { return state.unlocked3rd ? 3 : 2; }
+function mulOf(streak) {
+  if (streak < 3)  return 1;
+  if (streak < 6)  return 1.5;
+  if (streak < 10) return 2;
+  return 3;
 }
 
-// ── Spawn asteroid ────────────────────────────────────────────────────────────
-function spawnAst(){
-  if(!innerR||asts.length>=C.MAX_AST)return;
-  const d=diff();
-  const ring=Math.random()<0.5?'inner':'outer';
-  const pAng=player?player.angle:0;
-  let ang;
-  for(let t=0;t<10;t++){
-    ang=Math.random()*Math.PI*2;
-    if(Math.abs(angDiff(pAng,ang))>Math.PI/2.5)break;
-  }
-  const spd=d.spd*(0.7+Math.random()*0.55);
-  const dir=Math.random()<0.5?1:-1;
-  asts.push({ring,angle:ang,speed:spd*dir,r:6+Math.random()*8,hue:15+Math.random()*35,nearState:'out'});
+// ─── Input ─────────────────────────────────────────────────────────────────
+function onTap() {
+  if (state.phase === 'start')    { startGame(); return; }
+  if (state.phase === 'gameover') { initState(); return; }
+  if (state.phase === 'playing')  { handleTap(); }
 }
 
-// ── Spawn gate ────────────────────────────────────────────────────────────────
-function spawnGate(){
-  const ring=Math.random()<0.5?'inner':'outer';
-  // Pick angle not on top of player
-  let mid=Math.random()*Math.PI*2;
-  gate={ring,mid,phase:'tele',timer:C.GATE_TELE,triggered:false};
-}
-
-// ── Switch ring ───────────────────────────────────────────────────────────────
-function switchRing(){
-  if(!player||player.switchCd>0)return;
-  const old=player.ring;
-  player.ring=old==='inner'?'outer':'inner';
-  player.switchCd=C.SWITCH_CD;
-  // Reset near state on old ring
-  for(const a of asts){if(a.ring===old&&a.nearState==='near')a.nearState='out';}
-  const[nx,ny]=ringXY(player.ring,player.angle);
-  const hsl=inverted?'hsla(290,90%,72%,':'hsla(185,90%,70%,';
-  burst(nx,ny,14,hsl,80,0.38);
-  shk(2.5,75);
-}
-
-// ── Award near miss ───────────────────────────────────────────────────────────
-function awardNear(ast){
-  ast.nearState='done';
-  nearStreak++; peakStreak=Math.max(peakStreak,nearStreak);
-  const bonus=C.NEAR_BONUS*mult;
-  scoreF+=bonus; score=Math.floor(scoreF);
-  const[px,py]=ringXY(player.ring,player.angle);
-  burst(px,py,12,'hsla(55,100%,70%,',90,0.55);
-  shk(3.5,130);
-  addFloat(px+(Math.random()-.5)*26,py-20,'+'+bonus+(mult>1?' \xd7'+mult:''),'hsl(55,100%,70%)');
-}
-
-// ── Trigger inversion ─────────────────────────────────────────────────────────
-function triggerInv(){
-  inverted=true;
-  invTimer=C.INV_DUR;
-  player.dir*=-1;
-  const m=gMult();
-  mult=Math.max(mult,m);
-  peakMult=Math.max(peakMult,mult);
-  const[gx,gy]=ringXY(gate.ring,gate.mid);
-  burst(gx,gy,40,'hsla(285,95%,75%,',130,0.75);
-  burst(CX,CY,18,'hsla(285,75%,60%,',55,1.1);
-  shk(6,300);
-  const bonus=50*m;
-  scoreF+=bonus; score=Math.floor(scoreF);
-  addFloat(CX,CY-70,'+'+bonus+' GATE! \xd7'+m,'hsl(285,90%,80%)');
-  gate.triggered=true;
-}
-
-// ── Kill player ───────────────────────────────────────────────────────────────
-function killPlayer(){
-  if(state!=='playing')return;
-  if(score>best){best=score;localStorage.setItem(C.LS_BEST,best);}
-  localStorage.setItem(C.LS_RUNS,String(parseInt(localStorage.getItem(C.LS_RUNS)||'0')+1));
-  const[px,py]=ringXY(player.ring,player.angle);
-  burst(px,py,60,'hsla(0,100%,62%,',200,2.0);
-  burst(px,py,20,'hsla(30,100%,65%,',90,1.2);
-  burst(CX,CY,15,'hsla(0,80%,55%,',50,1.5);
-  shk(16,550);
-  flashAlpha=0.85;
-  hitStopT=C.HIT_STOP;
-  state='gameover';
-  goLock=C.GO_LOCK;
-}
-
-// ── Collision check ───────────────────────────────────────────────────────────
-function checkCols(){
-  if(!player||state!=='playing')return;
-  const pa=player.angle, pr=player.ring;
-  for(const ast of asts){
-    if(ast.ring!==pr)continue;
-    const r=ringR(pr);
-    const ad=Math.abs(angDiff(pa,ast.angle));
-    const hitA=(C.PLAYER_R+ast.r)/r;
-    const nearA=hitA+C.NEAR_EXTRA;
-    if(ad<hitA){killPlayer();return;}
-    if(ad<nearA){if(ast.nearState==='out')ast.nearState='near';}
-    else if(ast.nearState==='near'){awardNear(ast);}
-  }
-}
-
-// ── Check gate trigger ────────────────────────────────────────────────────────
-function checkGate(){
-  if(!gate||gate.phase!=='act'||gate.triggered||!player)return;
-  if(player.ring!==gate.ring)return;
-  if(Math.abs(angDiff(player.angle,gate.mid))<C.GATE_ARC/2)triggerInv();
-}
-
-// ── Update particles ──────────────────────────────────────────────────────────
-function updParts(dt){
-  for(let i=parts.length-1;i>=0;i--){
-    const p=parts[i];
-    p.x+=p.vx*dt; p.y+=p.vy*dt;
-    p.vx*=0.88; p.vy*=0.88;
-    p.life-=dt;
-    if(p.life<=0)parts.splice(i,1);
-  }
-}
-function updFloats(dt){
-  for(let i=floats.length-1;i>=0;i--){
-    const f=floats[i];
-    f.y+=f.vy*dt; f.life-=dt;
-    if(f.life<=0)floats.splice(i,1);
-  }
-}
-
-// ── Ship trail ────────────────────────────────────────────────────────────────
-function spawnTrail(){
-  if(!player||state!=='playing')return;
-  const[px,py]=ringXY(player.ring,player.angle);
-  const ang=player.angle;
-  // Tangential: perpendicular to radial
-  // Movement direction: dir * (-sin(ang), cos(ang))
-  // Trail: opposite of movement
-  const tx=Math.sin(ang)*player.dir;
-  const ty=-Math.cos(ang)*player.dir;
-  const hsl=inverted?'hsla(290,90%,72%,':'hsla(185,90%,70%,';
-  for(let i=0;i<3;i++){
-    const s=15+Math.random()*25;
-    const sp=(Math.random()-.5)*0.8;
-    addP(px+(Math.random()-.5)*3,py+(Math.random()-.5)*3,
-      (tx+Math.cos(ang)*sp)*s,(ty+Math.sin(ang)*sp)*s,hsl,2,0.28+Math.random()*0.18);
-  }
-}
-
-// ── Main update ───────────────────────────────────────────────────────────────
-function update(dt){
-  // Shake
-  if(shake.t>0){
-    shake.t-=dt;
-    const f=shake.t/shake.dur;
-    shake.x=(Math.random()-.5)*shake.mag*f;
-    shake.y=(Math.random()-.5)*shake.mag*f;
-  }else{shake.x=0;shake.y=0;}
-
-  // Flash decay
-  if(flashAlpha>0)flashAlpha=Math.max(0,flashAlpha-dt*3.5);
-
-  // Hit stop: only particles/shake update
-  if(hitStopT>0){
-    hitStopT-=dt;
-    updParts(dt); updFloats(dt);
-    return;
-  }
-
-  updParts(dt); updFloats(dt);
-
-  if(state==='gameover'){goLock-=dt;return;}
-  if(state!=='playing')return;
-
-  elapsed+=dt;
-  bgHue=(bgHue+5*dt)%360;
-  scoreF+=C.SCORE_PS*(inverted?mult:1)*dt;
-  score=Math.floor(scoreF);
-
-  // Player
-  player.angle=(player.angle+C.ORBIT_SPD*player.dir*dt+Math.PI*200)%(Math.PI*2);
-  if(player.switchCd>0)player.switchCd-=dt;
-
-  // Inversion countdown
-  if(inverted){
-    invTimer-=dt;
-    if(invTimer<=0){
-      inverted=false;
-      player.dir*=-1; // restore direction
-      mult=1;
-    }
-  }
-
-  // Trail
-  trailTick+=dt;
-  if(trailTick>0.033){trailTick=0;spawnTrail();}
-
-  // Asteroids update
-  for(let i=asts.length-1;i>=0;i--){
-    const a=asts[i];
-    a.angle=(a.angle+a.speed*dt+Math.PI*200)%(Math.PI*2);
-    // Remove very old asteroids (shouldn't accumulate)
-    if(asts.length>C.MAX_AST+2)asts.splice(i,1);
-  }
-
-  // Spawn asteroid
-  spawnT-=dt;
-  if(spawnT<=0){
-    spawnAst();
-    const d=diff();
-    spawnT=d.int*(0.75+Math.random()*0.5);
-  }
-
-  // Gate cooldown / spawn
-  gateCd-=dt;
-  if(!gate&&gateCd<=0){
-    spawnGate();
-    gateCd=C.GATE_CD_MIN+Math.random()*(C.GATE_CD_MAX-C.GATE_CD_MIN);
-  }
-
-  // Gate phase update
-  if(gate){
-    gate.timer-=dt;
-    if(gate.phase==='tele'&&gate.timer<=0){gate.phase='act';gate.timer=C.GATE_ACT;}
-    else if(gate.phase==='act'&&gate.timer<=0){gate.phase='done';gate.timer=0.4;}
-    else if(gate.phase==='done'&&gate.timer<=0){gate=null;}
-  }
-
-  checkCols();
-  checkGate();
-}
-
-// ── Round rect helper ─────────────────────────────────────────────────────────
-function rRect(x,y,w,h,r){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y);
-  ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-  ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-  ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-  ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);
-  ctx.closePath();
-}
-
-function btn(label,cx,cy,w,h,col){
-  rRect(cx-w/2,cy-h/2,w,h,h/2);
-  ctx.fillStyle=col;ctx.fill();
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.font='bold '+Math.round(h*.42)+"px 'Segoe UI',sans-serif";
-  ctx.fillStyle='#fff';ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=4;
-  ctx.fillText(label,cx,cy);
-  ctx.shadowBlur=0;ctx.textBaseline='alphabetic';
-}
-
-// ── Draw background ───────────────────────────────────────────────────────────
-function drawBG(){
-  const g=ctx.createRadialGradient(CX,CY,0,CX,CY,Math.max(W,H)*.85);
-  g.addColorStop(0,'hsl('+bgHue+',24%,9%)');
-  g.addColorStop(1,'hsl('+((bgHue+40)%360)+',14%,3%)');
-  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-  const t=performance.now()/3400;
-  for(const s of STARS){
-    const a=s.b*(0.5+0.5*Math.sin(t+s.fx*11));
-    ctx.beginPath();ctx.arc(s.fx*W,s.fy*H,s.r,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,255,255,'+a+')';ctx.fill();
-  }
-}
-
-// ── Draw core / star ──────────────────────────────────────────────────────────
-function drawCore(){
-  const t=performance.now()/1000;
-  const pulse=coreR*(1+0.07*Math.sin(t*2.8));
-  // Outer glow
-  const og=ctx.createRadialGradient(CX,CY,0,CX,CY,pulse*3.8);
-  og.addColorStop(0,'hsla('+((bgHue+55)%360)+',90%,70%,.32)');
-  og.addColorStop(1,'hsla('+bgHue+',60%,40%,0)');
-  ctx.beginPath();ctx.arc(CX,CY,pulse*3.8,0,Math.PI*2);
-  ctx.fillStyle=og;ctx.fill();
-  // Core
-  const cg=ctx.createRadialGradient(CX-coreR*.2,CY-coreR*.2,coreR*.05,CX,CY,pulse);
-  cg.addColorStop(0,'hsl('+((bgHue+65)%360)+',95%,92%)');
-  cg.addColorStop(0.5,'hsl('+((bgHue+40)%360)+',80%,65%)');
-  cg.addColorStop(1,'hsl('+bgHue+',55%,35%)');
-  ctx.beginPath();ctx.arc(CX,CY,pulse,0,Math.PI*2);
-  ctx.fillStyle=cg;ctx.fill();
-}
-
-// ── Draw rings ────────────────────────────────────────────────────────────────
-function drawRings(){
-  const activeRing=inverted?player&&player.ring:null;
-  [innerR,outerR].forEach((r,idx)=>{
-    const isInner=idx===0;
-    const ringName=isInner?'inner':'outer';
-    // Glow ring
-    ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);
-    const glowAlpha=player&&player.ring===ringName?0.12:0.06;
-    ctx.strokeStyle='hsla('+bgHue+',55%,60%,'+glowAlpha+')';
-    ctx.lineWidth=6;ctx.setLineDash([]);ctx.stroke();
-    // Dashed ring
-    ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);
-    ctx.strokeStyle='hsla('+bgHue+',48%,58%,'+(player&&player.ring===ringName?0.22:0.1)+')';
-    ctx.lineWidth=1.5;ctx.setLineDash([5,9]);ctx.stroke();
-  });
-  ctx.setLineDash([]);
-}
-
-// ── Draw gate ─────────────────────────────────────────────────────────────────
-function drawGate(){
-  if(!gate||gate.phase==='done')return;
-  const r=ringR(gate.ring);
-  const a0=gate.mid-C.GATE_ARC/2, a1=gate.mid+C.GATE_ARC/2;
-  const t=performance.now()/1000;
-  let col, w, glow;
-  if(gate.phase==='tele'){
-    const p=(gate.timer/C.GATE_TELE);
-    const flicker=0.5+0.5*Math.sin(t*8*(1-p+0.5));
-    col='hsla(42,100%,65%,'+(0.5+0.35*flicker)+')';
-    w=5;
-    glow='hsla(42,100%,65%,'+(0.15+0.1*flicker)+')';
-  }else{
-    const p=gate.timer/C.GATE_ACT;
-    const flicker=0.5+0.5*Math.sin(t*14);
-    col='hsla(285,100%,80%,'+(0.85+0.15*flicker)+')';
-    w=8;
-    glow='hsla(285,90%,70%,0.28)';
-  }
-  // Glow halo
-  ctx.beginPath();ctx.arc(CX,CY,r,a0,a1);
-  ctx.strokeStyle=glow;ctx.lineWidth=w+14;ctx.lineCap='round';ctx.stroke();
-  // Main arc
-  ctx.beginPath();ctx.arc(CX,CY,r,a0,a1);
-  ctx.strokeStyle=col;ctx.lineWidth=w;ctx.stroke();
-  ctx.lineCap='butt';
-  // Label
-  const lx=CX+Math.cos(gate.mid)*(r+(gate.phase==='tele'?18:22));
-  const ly=CY+Math.sin(gate.mid)*(r+(gate.phase==='tele'?18:22));
-  ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.font='bold '+Math.round(H*.022)+"px 'Segoe UI',sans-serif";
-  ctx.fillStyle=gate.phase==='tele'?'rgba(255,200,0,.8)':'rgba(220,150,255,.95)';
-  ctx.shadowColor=gate.phase==='act'?'rgba(200,100,255,.6)':'rgba(255,180,0,.5)';
-  ctx.shadowBlur=8;
-  ctx.fillText(gate.phase==='tele'?'GATE':'GO!',lx,ly);
-  ctx.shadowBlur=0;ctx.textBaseline='alphabetic';
-}
-
-// ── Draw asteroids ────────────────────────────────────────────────────────────
-function drawAsts(){
-  for(const ast of asts){
-    const[x,y]=ringXY(ast.ring,ast.angle);
-    // Glow
-    const gg=ctx.createRadialGradient(x,y,0,x,y,ast.r*2.8);
-    gg.addColorStop(0,'hsla('+ast.hue+',90%,65%,.3)');
-    gg.addColorStop(1,'hsla('+ast.hue+',90%,65%,0)');
-    ctx.beginPath();ctx.arc(x,y,ast.r*2.8,0,Math.PI*2);
-    ctx.fillStyle=gg;ctx.fill();
-    // Rocky body
-    ctx.beginPath();
-    const segs=9;
-    for(let i=0;i<=segs;i++){
-      const a=(i/segs)*Math.PI*2;
-      const v=0.70+0.30*Math.sin(a*4.1+ast.hue*.07);
-      const r=ast.r*v;
-      if(i===0)ctx.moveTo(x+Math.cos(a)*r,y+Math.sin(a)*r);
-      else ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r);
-    }
-    ctx.closePath();
-    ctx.fillStyle='hsl('+ast.hue+',60%,30%)';
-    ctx.strokeStyle='hsl('+ast.hue+',90%,60%)';
-    ctx.lineWidth=1.5;ctx.fill();ctx.stroke();
-    // Direction indicator (small tail)
-    const ang=ast.angle+(-ast.speed>0?0:Math.PI);
-    ctx.beginPath();
-    ctx.moveTo(x,y);
-    ctx.lineTo(x+Math.cos(ang)*ast.r*1.6,y+Math.sin(ang)*ast.r*1.6);
-    ctx.strokeStyle='hsla('+ast.hue+',90%,70%,.4)';
-    ctx.lineWidth=1.5;ctx.stroke();
-  }
-}
-
-// ── Draw player ───────────────────────────────────────────────────────────────
-function drawPlayer(){
-  if(!player)return;
-  const[px,py]=ringXY(player.ring,player.angle);
-  const hue=inverted?(bgHue+190)%360:(bgHue+120)%360;
-  const t=performance.now()/1000;
-
-  // Switch cooldown ring
-  if(player.switchCd>0){
-    const f=1-player.switchCd/C.SWITCH_CD;
-    ctx.beginPath();ctx.arc(px,py,C.PLAYER_R+6,-Math.PI/2,-Math.PI/2+f*Math.PI*2);
-    ctx.strokeStyle='hsla('+hue+',80%,65%,.5)';ctx.lineWidth=2;ctx.stroke();
-  }
-
-  // Inverted pulse ring
-  if(inverted){
-    const pa=0.3+0.25*Math.sin(t*6);
-    ctx.beginPath();ctx.arc(px,py,C.PLAYER_R*2.8,0,Math.PI*2);
-    ctx.strokeStyle='hsla('+hue+',90%,70%,'+(pa)+')';ctx.lineWidth=2;ctx.stroke();
-  }
-
-  // Outer glow
-  const pg=ctx.createRadialGradient(px,py,0,px,py,C.PLAYER_R*2.5);
-  pg.addColorStop(0,'hsla('+hue+',90%,70%,.2)');pg.addColorStop(1,'hsla('+hue+',90%,70%,0)');
-  ctx.beginPath();ctx.arc(px,py,C.PLAYER_R*2.5,0,Math.PI*2);ctx.fillStyle=pg;ctx.fill();
-
-  // Triangle ship pointing in travel direction
-  const sz=C.PLAYER_R;
-  // Movement tangent: dir * (-sin, cos)
-  const tx=-Math.sin(player.angle)*player.dir;
-  const ty= Math.cos(player.angle)*player.dir;
-  const rx=Math.cos(player.angle); // radial out
-  const ry=Math.sin(player.angle);
-
-  ctx.beginPath();
-  ctx.moveTo(px+tx*sz*1.5,py+ty*sz*1.5);
-  ctx.lineTo(px-tx*sz*.85+rx*sz*.8,py-ty*sz*.85+ry*sz*.8);
-  ctx.lineTo(px-tx*sz*.85-rx*sz*.8,py-ty*sz*.85-ry*sz*.8);
-  ctx.closePath();
-  ctx.fillStyle='hsl('+hue+',90%,80%)';
-  ctx.strokeStyle='hsl('+hue+',100%,94%)';
-  ctx.lineWidth=1;
-  ctx.shadowColor='hsl('+hue+',100%,70%)';ctx.shadowBlur=16;
-  ctx.fill();ctx.stroke();ctx.shadowBlur=0;
-}
-
-// ── Draw particles ────────────────────────────────────────────────────────────
-function drawParts(){
-  for(const p of parts){
-    const a=p.life/p.ml;
-    ctx.beginPath();ctx.arc(p.x,p.y,p.sz*a,0,Math.PI*2);
-    ctx.fillStyle=p.hsl+a+')';ctx.fill();
-  }
-}
-
-// ── Draw floats ───────────────────────────────────────────────────────────────
-function drawFloats(){
-  ctx.textAlign='center';
-  for(const f of floats){
-    const a=Math.min(1,f.life/f.ml*2.5);
-    ctx.globalAlpha=a;
-    ctx.font='bold '+Math.round(H*.027)+"px 'Segoe UI',sans-serif";
-    ctx.fillStyle=f.col;ctx.fillText(f.text,f.x,f.y);
-  }
-  ctx.globalAlpha=1;
-}
-
-// ── Draw HUD ──────────────────────────────────────────────────────────────────
-function drawHUD(){
-  if(state!=='playing')return;
-  // Score
-  ctx.textAlign='center';
-  ctx.font='bold '+Math.round(H*.055)+"px 'Segoe UI',sans-serif";
-  ctx.fillStyle='rgba(255,255,255,.95)';
-  ctx.shadowColor='rgba(0,0,0,.55)';ctx.shadowBlur=7;
-  ctx.fillText(score,CX,H*.088);ctx.shadowBlur=0;
-
-  // Multiplier
-  if(inverted&&mult>1){
-    ctx.font='bold '+Math.round(H*.03)+"px 'Segoe UI',sans-serif";
-    ctx.fillStyle='hsl(290,90%,80%)';
-    ctx.shadowColor='rgba(200,100,255,.6)';ctx.shadowBlur=10;
-    ctx.fillText('\xd7'+mult+' INVERTED',CX,H*.13);ctx.shadowBlur=0;
-    // Inversion timer bar
-    const bw=W*.45,bh=7,bx=CX-bw/2,by=H*.145;
-    ctx.fillStyle='rgba(255,255,255,.12)';
-    rRect(bx,by,bw,bh,bh/2);ctx.fill();
-    ctx.fillStyle='hsl(290,80%,70%)';
-    rRect(bx,by,bw*(invTimer/C.INV_DUR),bh,bh/2);ctx.fill();
-  }
-
-  // Near-miss combo
-  if(nearStreak>0){
-    ctx.font=Math.round(H*.021)+"px 'Segoe UI',sans-serif";
-    ctx.fillStyle='rgba(255,255,255,.38)';
-    ctx.textAlign='left';
-    ctx.fillText('streak '+nearStreak,10,H*.054);
-  }
-
-  // Best top-right
-  ctx.textAlign='right';
-  ctx.font=Math.round(H*.021)+"px 'Segoe UI',sans-serif";
-  ctx.fillStyle='rgba(255,255,255,.25)';
-  ctx.fillText('best '+best,W-10,H*.054);
-}
-
-// ── Start screen ──────────────────────────────────────────────────────────────
-function drawStart(){
-  const pw=W*.82,ph=H*.60,px=(W-pw)/2,py=(H-ph)/2;
-  rRect(px,py,pw,ph,20);
-  ctx.fillStyle='rgba(0,0,20,.8)';ctx.fill();
-  rRect(px,py,pw,ph,20);
-  ctx.strokeStyle='hsla('+bgHue+',55%,55%,.35)';ctx.lineWidth=1.5;ctx.stroke();
-
-  ctx.textAlign='center';
-  const th=(bgHue+60)%360;
-  ctx.font='bold '+Math.round(H*.068)+"px 'Segoe UI',sans-serif";
-  ctx.fillStyle='hsl('+th+',90%,76%)';
-  ctx.shadowColor='hsl('+th+',100%,64%)';ctx.shadowBlur=22;
-  ctx.fillText('ORBIT',CX,py+ph*.23);
-  ctx.fillText('SHIFT',CX,py+ph*.38);
-  ctx.shadowBlur=0;
-
-  ctx.font=Math.round(H*.023)+"px 'Segoe UI',sans-serif";
-  ctx.fillStyle='rgba(255,255,255,.62)';
-  ctx.fillText('Switch rings \u2022 Dodge asteroids',CX,py+ph*.52);
-  ctx.fillText('Ride the Gate for 2\xd7 score!',CX,py+ph*.625);
-
-  ctx.font=Math.round(H*.019)+"px 'Segoe UI',sans-serif";
-  ctx.fillStyle='rgba(255,255,255,.32)';
-  ctx.fillText('Tap / Space / Enter to switch rings',CX,py+ph*.74);
-
-  if(challengeVal>0){
-    ctx.font='bold '+Math.round(H*.025)+"px 'Segoe UI',sans-serif";
-    ctx.fillStyle='hsl(42,100%,70%)';
-    ctx.shadowColor='rgba(255,180,0,.5)';ctx.shadowBlur=10;
-    ctx.fillText('\u26a1 Beat: '+challengeVal,CX,py+ph*.87);ctx.shadowBlur=0;
-  }
-
-  const by=py+ph+H*.055;
-  btn('TAP TO START',CX,by,W*.56,H*.063,'hsla('+th+',68%,40%,.92)');
-  if(best>0){
-    ctx.font=Math.round(H*.022)+"px 'Segoe UI',sans-serif";
-    ctx.fillStyle='rgba(255,255,255,.35)';
-    ctx.textAlign='center';
-    ctx.fillText('Best: '+best,CX,by+H*.063*.5+H*.036);
-  }
-}
-
-// ── Game over screen ──────────────────────────────────────────────────────────
-function drawGameover(){
-  const isNew=score>0&&score>=best;
-  const pw=W*.82,ph=H*.56,px=(W-pw)/2,py=(H-ph)/2-H*.03;
-  rRect(px,py,pw,ph,20);
-  ctx.fillStyle='rgba(0,0,12,.86)';ctx.fill();
-  rRect(px,py,pw,ph,20);
-  ctx.strokeStyle='rgba(255,55,55,.48)';ctx.lineWidth=1.5;ctx.stroke();
-
-  ctx.textAlign='center';
-  ctx.font='bold '+Math.round(H*.045)+"px 'Segoe UI',sans-serif";
-  ctx.fillStyle='#ff5555';
-  ctx.shadowColor='rgba(255,0,0,.45)';ctx.shadowBlur=18;
-  ctx.fillText('GAME OVER',CX,py+ph*.21);ctx.shadowBlur=0;
-
-  ctx.font=Math.round(H*.082)+"px 'Segoe UI',sans-serif";
-  if(isNew){ctx.fillStyle='hsl(42,100%,70%)';ctx.shadowColor='rgba(255,198,0,.65)';ctx.shadowBlur=18;}
-  else ctx.fillStyle='#fff';
-  ctx.fillText(score,CX,py+ph*.48);ctx.shadowBlur=0;
-
-  if(isNew){
-    ctx.font='bold '+Math.round(H*.028)+"px 'Segoe UI',sans-serif";
-    ctx.fillStyle='hsl(42,100%,72%)';
-    ctx.fillText('\u2736 NEW BEST \u2736',CX,py+ph*.61);
-  }else{
-    ctx.font=Math.round(H*.023)+"px 'Segoe UI',sans-serif";
-    ctx.fillStyle='rgba(255,255,255,.4)';
-    ctx.fillText('Best: '+best,CX,py+ph*.61);
-  }
-
-  ctx.font=Math.round(H*.019)+"px 'Segoe UI',sans-serif";
-  ctx.fillStyle='rgba(255,255,255,.28)';
-  ctx.fillText('Peak \xd7'+peakMult+' \u2022 Streak '+peakStreak,CX,py+ph*.75);
-
-  if(challengeVal>0){
-    ctx.font=Math.round(H*.021)+"px 'Segoe UI',sans-serif";
-    ctx.fillStyle=score>=challengeVal?'hsl(120,80%,65%)':'rgba(255,255,255,.32)';
-    ctx.fillText(score>=challengeVal?'\u2713 Challenge beaten!':'Challenge: '+challengeVal,CX,py-16);
-  }
-
-  if(goLock<=0){
-    const by=py+ph+H*.048;
-    btn('PLAY AGAIN',CX,by,W*.52,H*.062,'hsla(222,65%,42%,.92)');
-    btn('CHALLENGE A FRIEND',CX,by+H*.075,W*.65,H*.052,'hsla(158,52%,32%,.92)');
-  }else{
-    ctx.font=Math.round(H*.018)+"px 'Segoe UI',sans-serif";
-    ctx.fillStyle='rgba(255,255,255,.2)';
-    ctx.fillText('\u2022\u2022\u2022',CX,py+ph+H*.058);
-  }
-}
-
-// ── Render ────────────────────────────────────────────────────────────────────
-function render(){
-  ctx.save();
-  ctx.translate(shake.x,shake.y);
-  drawBG();
-  drawCore();
-  drawRings();
-  drawGate();
-  drawAsts();
-  drawParts();
-  if(state!=='gameover'||hitStopT>0)drawPlayer();
-  drawFloats();
-  drawHUD();
-  if(state==='start')drawStart();
-  if(state==='gameover')drawGameover();
-  ctx.restore();
-
-  // Death flash overlay
-  if(flashAlpha>0){
-    ctx.fillStyle='rgba(255,30,30,'+flashAlpha+')';
-    ctx.fillRect(0,0,W,H);
-  }
-}
-
-// ── Input ─────────────────────────────────────────────────────────────────────
-function onInput(mx,my){
-  if(state==='start'){startGame();return;}
-  if(state==='playing'){switchRing();return;}
-  if(state==='gameover'&&goLock<=0){
-    // Check challenge button
-    if(mx!==undefined){
-      const ph=H*.56,py=(H-ph)/2-H*.03;
-      const shareY=py+ph+H*.048+H*.075;
-      if(Math.abs(my-shareY)<H*.036&&Math.abs(mx-CX)<W*.38){shareScore();return;}
-    }
-    startGame();
-  }
-}
-
-canvas.addEventListener('pointerdown',e=>{
-  e.preventDefault();
-  const r=canvas.getBoundingClientRect();
-  const mx=(e.clientX-r.left)*(W/r.width);
-  const my=(e.clientY-r.top)*(H/r.height);
-  onInput(mx,my);
-},{passive:false});
-
-document.addEventListener('keydown',e=>{
-  if(e.code==='Space'||e.code==='Enter'){e.preventDefault();onInput();}
+canvas.addEventListener('pointerdown', e => { e.preventDefault(); onTap(); });
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); onTap(); }
+  if (e.code === 'KeyS' && state && state.phase === 'gameover') doShare();
 });
 
-// ── Share ─────────────────────────────────────────────────────────────────────
-function shareScore(){
-  const url='https://balinti.github.io/orbit-shift/?challenge='+score;
-  const text='I scored '+score+' in Orbit Shift! Can you beat me? \uD83D\uDE80';
-  if(navigator.share){navigator.share({title:'Orbit Shift',text,url}).catch(()=>{});}
-  else{navigator.clipboard.writeText(url+'\n'+text).catch(()=>{});}
+function startGame() {
+  initState();
+  state.phase = 'playing';
 }
 
-// ── Start game ────────────────────────────────────────────────────────────────
-function startGame(){
-  state='playing';
-  elapsed=0;scoreF=0;score=0;
-  combo=0;mult=1;peakMult=1;nearStreak=0;peakStreak=0;
-  bgHue=220;
-  asts=[];parts=[];floats=[];
-  inverted=false;invTimer=0;
-  player={ring:'outer',angle:-Math.PI/2,dir:1,switchCd:0};
-  shake={x:0,y:0,t:0,dur:1,mag:0};
-  flashAlpha=0;
-  spawnT=1.4;hitStopT=0;goLock=0;
-  gate=null;gateCd=7;
-  trailTick=0;
+function handleTap() {
+  const p = state.player;
+  const s = state.sling;
+  const inWindow = Math.abs(angDiff(p.angle, s.ang)) < s.half;
+
+  if (inWindow) {
+    p.ring   = (p.ring === 'inner') ? 'outer' : 'inner';
+    p.polIdx = (p.polIdx + 1) % numPol();
+    spawnParticlesBurst(playerX(), playerY(), POLARITIES[p.polIdx].hue, 14, 80, 180);
+  } else {
+    p.polIdx = (p.polIdx + 1) % numPol();
+  }
 }
 
-// ── Main loop ─────────────────────────────────────────────────────────────────
-function loop(ts){
-  const dt=Math.min((ts-lastTs)/1000,.05);
-  lastTs=ts;
-  update(dt);
-  render();
+function playerX() {
+  const p = state.player;
+  return cx + Math.cos(p.angle) * ((p.ring === 'inner') ? innerR : outerR);
+}
+function playerY() {
+  const p = state.player;
+  return cy + Math.sin(p.angle) * ((p.ring === 'inner') ? innerR : outerR);
+}
+
+// ─── Particles ─────────────────────────────────────────────────────────────
+function spawnParticlesBurst(x, y, hue, n, spdLo, spdHi) {
+  for (let i = 0; i < n; i++) {
+    const ang = rand(0, TAU);
+    const spd = rand(spdLo, spdHi);
+    particles.push({
+      x, y,
+      vx: Math.cos(ang) * spd,
+      vy: Math.sin(ang) * spd,
+      life: 1, maxLife: rand(0.4, 1.0),
+      r: rand(2, 5.5),
+      hue, sat: 90, lit: 68,
+    });
+  }
+}
+
+// ─── Gate spawn ────────────────────────────────────────────────────────────
+function spawnGate() {
+  const p   = state.player;
+  const t   = state.t;
+  const cnt = (t > 25 && Math.random() < 0.4) ? 2 : 1;
+
+  for (let i = 0; i < cnt; i++) {
+    const ring   = (i === 0) ? p.ring : ((p.ring === 'inner') ? 'outer' : 'inner');
+    const feint  = (t > 45) && Math.random() < 0.35;
+    const polIdx = randInt(0, numPol() - 1);
+    const ahead  = p.dir * rand(2.2, 3.1);
+    const ang    = ((p.angle + ahead) % TAU + TAU) % TAU;
+
+    gates.push({
+      ring, angle: ang,
+      speed:   state.diff.speed * ((ring === 'inner') ? 1.0 : 0.82),
+      dir:     p.dir,
+      polIdx, feint,
+      half:    0.17,
+      passed:  false,
+      cleared: false,
+      flash:   0,
+    });
+  }
+}
+
+// ─── Update ────────────────────────────────────────────────────────────────
+let lastTime = 0;
+
+function update(ts) {
+  const rawDt = (ts - lastTime) / 1000;
+  lastTime = ts;
+  const dt = clamp(rawDt, 0, 0.1);
+
+  if (state.phase !== 'playing') return;
+
+  state.t += dt;
+  const t = state.t;
+
+  // Unlock 3rd polarity
+  if (!state.unlocked3rd && (state.score >= 8 || t >= 12)) state.unlocked3rd = true;
+
+  // Difficulty ramp
+  const ramp = Math.min(t / 90, 1);
+  state.diff.speed        = 1.3 + ramp * 1.6;
+  state.diff.gateInterval = Math.max(1.2, 2.8 - t * 0.018);
+  state.diff.nextGate    -= dt;
+  if (state.diff.nextGate <= 0) {
+    spawnGate();
+    state.diff.nextGate = state.diff.gateInterval * rand(0.8, 1.3);
+  }
+
+  // Player move
+  const p = state.player;
+  p.speed = state.diff.speed;
+  p.angle += p.dir * p.speed * dt;
+
+  // Slingshot window
+  const s  = state.sling;
+  s.half   = clamp(0.55 - t * 0.003, 0.22, 0.55);
+  if (t > 45) {
+    s.drift = Math.sin(t * 0.4) * 0.5;
+    s.ang  += s.drift * dt;
+  } else {
+    s.ang   = p.angle + Math.PI; // opposite side
+  }
+
+  // Gates
+  for (let i = gates.length - 1; i >= 0; i--) {
+    const g = gates[i];
+    g.angle += g.dir * g.speed * dt;
+    g.flash  = Math.max(0, g.flash - dt * 3.5);
+
+    if (g.cleared || g.passed) continue;
+
+    const sameRing = (g.ring === p.ring);
+    const overlap  = sameRing && Math.abs(angDiff(p.angle, g.angle)) < (g.half + 0.13);
+
+    if (overlap) {
+      if (g.polIdx === p.polIdx || g.feint) {
+        // Cleared
+        g.cleared = true;
+        if (!g.feint) {
+          const mul = mulOf(state.streak);
+          state.score += Math.max(1, Math.round(mul));
+          state.streak++;
+          if (state.score > state.best) {
+            state.best = state.score;
+            localStorage.setItem(LS_KEY, state.best);
+          }
+        }
+        const r2 = (g.ring === 'inner') ? innerR : outerR;
+        const gx = cx + Math.cos(g.angle) * r2;
+        const gy = cy + Math.sin(g.angle) * r2;
+        spawnParticlesBurst(gx, gy, POLARITIES[g.polIdx].hue, state.streak >= 3 ? 20 : 10, 80, 200);
+        g.flash = 0.35;
+      } else if (!g.feint) {
+        hitPlayer(g);
+        g.passed = true;
+      }
+    }
+
+    // Gate far behind — discard
+    if (angDiff(p.angle, g.angle) * p.dir < -Math.PI * 1.1) g.passed = true;
+  }
+
+  // GC
+  gates     = gates.filter(g => (!g.passed && !g.cleared) || g.flash > 0);
+  if (gates.length > 30) gates.splice(0, gates.length - 30);
+
+  // Particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const pt = particles[i];
+    pt.x    += pt.vx * dt;
+    pt.y    += pt.vy * dt;
+    pt.vx   *= Math.pow(0.90, dt * 60);
+    pt.vy   *= Math.pow(0.90, dt * 60);
+    pt.life -= dt / pt.maxLife;
+    if (pt.life <= 0) particles.splice(i, 1);
+  }
+  if (particles.length > 200) particles.splice(0, particles.length - 200);
+
+  // Shake decay
+  shake.mag *= Math.pow(0.05, dt);
+  shake.x = (Math.random() - 0.5) * shake.mag;
+  shake.y = (Math.random() - 0.5) * shake.mag;
+}
+
+function hitPlayer() {
+  if (state.shield) {
+    state.shield     = false;
+    state.shieldBreak = true;
+    state.streak      = 0;
+    shake.mag = 18;
+    spawnParticlesBurst(playerX(), playerY(), 55, 20, 80, 230);
+    setTimeout(() => { if (state) state.shieldBreak = false; }, 600);
+  } else {
+    // Death
+    spawnParticlesBurst(playerX(), playerY(), rand(0, 360), 30, 100, 320);
+    shake.mag = 42;
+    if (state.score > state.best) {
+      state.best = state.score;
+      localStorage.setItem(LS_KEY, state.best);
+    }
+    state.phase = 'gameover';
+  }
+}
+
+// ─── Draw ──────────────────────────────────────────────────────────────────
+// Persistent stars
+const STARS = Array.from({length: 65}, () => ({
+  x: Math.random(), y: Math.random(),
+  r: rand(0.3, 1.6),
+  bri: rand(0.2, 0.8),
+  ph: rand(0, TAU),
+}));
+
+function draw(ts) {
+  const sec = ts / 1000;
+  ctx.save();
+  ctx.translate(shake.x, shake.y);
+
+  // Background
+  const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.75);
+  bg.addColorStop(0, '#12122a');
+  bg.addColorStop(1, '#05050f');
+  ctx.fillStyle = bg;
+  ctx.fillRect(-shake.x - 2, -shake.y - 2, W + 4, H + 4);
+
+  // Stars
+  for (const s of STARS) {
+    const lum = s.bri * (0.7 + 0.3 * Math.sin(sec * 0.9 + s.ph));
+    ctx.fillStyle = `rgba(255,255,255,${lum})`;
+    ctx.beginPath();
+    ctx.arc(s.x * W, s.y * H, s.r, 0, TAU);
+    ctx.fill();
+  }
+
+  // Orbit rings
+  drawOrbit(innerR);
+  drawOrbit(outerR);
+
+  // Slingshot window
+  if (state.phase === 'playing') drawSlingshotWindow();
+
+  // Planet
+  drawPlanet();
+
+  // Gates
+  for (const g of gates) drawGate(g);
+
+  // Particles
+  for (const pt of particles) {
+    const a = Math.max(0, pt.life);
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, pt.r * a, 0, TAU);
+    ctx.fillStyle = hsl(pt.hue, pt.sat, pt.lit, a * 0.9);
+    ctx.fill();
+  }
+
+  // Player
+  if (state.phase !== 'start') drawPlayer(sec);
+
+  // HUD
+  if (state.phase === 'playing') drawHUD();
+
+  // Overlays
+  if (state.phase === 'start')    drawStart();
+  if (state.phase === 'gameover') drawGameover();
+
+  ctx.restore();
+}
+
+function drawOrbit(r) {
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, TAU);
+  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.lineWidth   = 1.5;
+  ctx.stroke();
+}
+
+function drawSlingshotWindow() {
+  const s = state.sling;
+  for (const [ring, r] of [['inner', innerR], ['outer', outerR]]) {
+    const playerRing = state.player.ring === ring;
+    const alp = playerRing ? 0.22 : 0.09;
+    const lw  = playerRing ? 10 : 5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, s.ang - s.half, s.ang + s.half);
+    ctx.strokeStyle = `rgba(255,225,90,${alp})`;
+    ctx.lineWidth   = lw;
+    ctx.stroke();
+    // Edge markers
+    for (const side of [-1, 1]) {
+      const ea = s.ang + side * s.half;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(ea) * (r - 7), cy + Math.sin(ea) * (r - 7));
+      ctx.lineTo(cx + Math.cos(ea) * (r + 7), cy + Math.sin(ea) * (r + 7));
+      ctx.strokeStyle = `rgba(255,225,90,${alp * 2.5})`;
+      ctx.lineWidth   = 2;
+      ctx.stroke();
+    }
+  }
+}
+
+function drawPlanet() {
+  const g1 = ctx.createRadialGradient(cx - 7, cy - 7, 2, cx, cy, 24);
+  g1.addColorStop(0, '#8cf');
+  g1.addColorStop(0.5, '#37d');
+  g1.addColorStop(1, '#113');
+  ctx.beginPath();
+  ctx.arc(cx, cy, 22, 0, TAU);
+  ctx.fillStyle = g1;
+  ctx.fill();
+  // Glow halo
+  const g2 = ctx.createRadialGradient(cx, cy, 20, cx, cy, 52);
+  g2.addColorStop(0, 'rgba(100,160,255,0.13)');
+  g2.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.beginPath();
+  ctx.arc(cx, cy, 52, 0, TAU);
+  ctx.fillStyle = g2;
+  ctx.fill();
+}
+
+function drawGate(g) {
+  const r   = (g.ring === 'inner') ? innerR : outerR;
+  const pol = POLARITIES[g.polIdx];
+  const alp = g.feint ? 0.32 : 1.0;
+  const lw  = g.feint ? 4 : 7;
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, g.angle - g.half, g.angle + g.half);
+  ctx.strokeStyle = hsl(pol.hue, 88, 60, alp);
+  ctx.lineWidth   = lw;
+  if (g.flash > 0) {
+    ctx.shadowBlur  = 22 * (g.flash / 0.35);
+    ctx.shadowColor = hsl(pol.hue, 100, 72);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Symbol
+  const mx = cx + Math.cos(g.angle) * r;
+  const my = cy + Math.sin(g.angle) * r;
+  ctx.save();
+  ctx.translate(mx, my);
+  ctx.font         = `bold ${g.feint ? 10 : 12}px sans-serif`;
+  ctx.fillStyle    = hsl(pol.hue, 85, 82, alp);
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(pol.label, 0, 0);
+  ctx.restore();
+}
+
+function drawPlayer(sec) {
+  const p   = state.player;
+  const r   = (p.ring === 'inner') ? innerR : outerR;
+  const px  = cx + Math.cos(p.angle) * r;
+  const py  = cy + Math.sin(p.angle) * r;
+  const pol = POLARITIES[p.polIdx];
+
+  // Glow
+  const gl = ctx.createRadialGradient(px, py, 0, px, py, 24);
+  gl.addColorStop(0, hsl(pol.hue, 100, 72, 0.5));
+  gl.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.beginPath();
+  ctx.arc(px, py, 24, 0, TAU);
+  ctx.fillStyle = gl;
+  ctx.fill();
+
+  // Triangle ship pointing in travel direction
+  const heading = p.angle + Math.PI / 2 * (p.dir > 0 ? 1 : -1);
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(heading);
+  ctx.beginPath();
+  ctx.moveTo(0, -10);
+  ctx.lineTo(7,  8);
+  ctx.lineTo(-7, 8);
+  ctx.closePath();
+  ctx.fillStyle   = hsl(pol.hue, 90, 68);
+  ctx.strokeStyle = hsl(pol.hue, 50, 90);
+  ctx.lineWidth   = 1.5;
+  ctx.fill();
+  ctx.stroke();
+  // Polarity label inside
+  ctx.font         = 'bold 8px sans-serif';
+  ctx.fillStyle    = '#fff';
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(pol.label, 0, 1);
+  ctx.restore();
+
+  // Shield ring
+  if (state.shield) {
+    const pulse = 0.5 + 0.5 * Math.sin(sec * 5.5);
+    ctx.beginPath();
+    ctx.arc(px, py, 15, 0, TAU);
+    ctx.strokeStyle = `rgba(255,225,70,${0.55 + 0.3 * pulse})`;
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+  }
+  if (state.shieldBreak) {
+    ctx.beginPath();
+    ctx.arc(px, py, 17, 0, TAU);
+    ctx.strokeStyle = 'rgba(255,60,60,0.85)';
+    ctx.lineWidth   = 3;
+    ctx.stroke();
+  }
+}
+
+function drawHUD() {
+  const mul = mulOf(state.streak);
+  ctx.textBaseline = 'top';
+
+  // Score
+  ctx.font      = 'bold 30px sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.fillText(state.score, cx, 14);
+
+  // Multiplier
+  if (mul > 1) {
+    ctx.font      = 'bold 13px sans-serif';
+    ctx.fillStyle = hsl(55, 100, 65);
+    ctx.fillText(`×${mul}`, cx, 50);
+  }
+
+  // Shield indicator
+  ctx.font      = '12px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = state.shield ? 'rgba(255,215,55,0.9)' : 'rgba(255,255,255,0.18)';
+  ctx.fillText('⚡ Shield', W - 10, 14);
+
+  // Streak
+  if (state.streak >= 2) {
+    ctx.font      = '12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillText(`Streak ${state.streak}`, 10, 14);
+  }
+}
+
+function drawOverlayBg() {
+  ctx.fillStyle = 'rgba(4,4,18,0.62)';
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawStart() {
+  drawOverlayBg();
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.font      = 'bold 40px sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('Orbit Shift', cx, cy - 85);
+
+  ctx.font      = '15px sans-serif';
+  ctx.fillStyle = 'rgba(170,195,255,0.85)';
+  ctx.fillText('Match gates. Switch lanes.', cx, cy - 42);
+
+  // Polarity preview
+  for (let i = 0; i < 3; i++) {
+    const pol = POLARITIES[i];
+    ctx.font      = 'bold 18px sans-serif';
+    ctx.fillStyle = hsl(pol.hue, 88, 65);
+    ctx.fillText(pol.label, cx - 50 + i * 50, cy + 12);
+  }
+  ctx.font      = '11px sans-serif';
+  ctx.fillStyle = 'rgba(200,200,255,0.45)';
+  ctx.fillText('3 polarities to match', cx, cy + 38);
+
+  // Prompt
+  const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 420);
+  ctx.font      = 'bold 17px sans-serif';
+  ctx.fillStyle = `rgba(255,255,255,${pulse})`;
+  ctx.fillText('Tap  /  Space  to Start', cx, cy + 85);
+
+  if (state.best > 0) {
+    ctx.font      = '13px sans-serif';
+    ctx.fillStyle = 'rgba(255,195,70,0.75)';
+    ctx.fillText(`Best: ${state.best}`, cx, cy + 118);
+  }
+}
+
+function drawGameover() {
+  drawOverlayBg();
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.font      = 'bold 34px sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.fillText('Game Over', cx, cy - 75);
+
+  ctx.font      = 'bold 24px sans-serif';
+  ctx.fillStyle = hsl(55, 100, 68);
+  ctx.fillText(`Score: ${state.score}`, cx, cy - 28);
+
+  ctx.font      = '16px sans-serif';
+  ctx.fillStyle = 'rgba(255,195,90,0.75)';
+  ctx.fillText(`Best: ${state.best}`, cx, cy + 10);
+
+  const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 420);
+  ctx.font      = 'bold 17px sans-serif';
+  ctx.fillStyle = `rgba(255,255,255,${pulse})`;
+  ctx.fillText('Tap  /  Space  to Retry', cx, cy + 58);
+
+  ctx.font      = '12px sans-serif';
+  ctx.fillStyle = 'rgba(140,190,255,0.55)';
+  ctx.fillText('[ S ] — Challenge a friend', cx, cy + 90);
+}
+
+// ─── Share ─────────────────────────────────────────────────────────────────
+function doShare() {
+  const url  = `https://balinti.github.io/orbit-shift/?ref=share&score=${state.score}`;
+  const text = `I scored ${state.score} in Orbit Shift! Can you beat me?`;
+  if (navigator.share) {
+    navigator.share({ title: 'Orbit Shift', text, url }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(`${text} ${url}`).then(() => {
+      alert('Copied to clipboard!');
+    }).catch(() => {
+      prompt('Copy this link:', url);
+    });
+  }
+}
+
+// ─── Main loop ─────────────────────────────────────────────────────────────
+function loop(ts) {
+  update(ts);
+  draw(ts);
   requestAnimationFrame(loop);
 }
 
-requestAnimationFrame(()=>{
-  resize();
-  window.addEventListener('resize',resize);
-  requestAnimationFrame(ts=>{lastTs=ts;loop(ts);});
-});
-
-})();
+initState();
+requestAnimationFrame(ts => { lastTime = ts; loop(ts); });
 </script>
 </body>
 </html>
