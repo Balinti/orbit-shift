@@ -3,22 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <title>Orbit Shift - Free HTML5 Game</title>
-  <meta name="description" content="Play Orbit Shift - Tap to switch colors and keep your spaceship alive as speed steadily climbs.">
+  <meta name="description" content="Play Orbit Shift - Tap to switch gravity and navigate the zigzag galaxy path without crashing into asteroids.">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#0a0a1a">
+  <link rel="canonical" href="https://balinti.github.io/orbit-shift/">
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="Orbit Shift - Free HTML5 Game">
-  <meta property="og:description" content="Tap to switch orbit lanes and match polarity gates. How long can you survive?">
+  <meta property="og:description" content="Play Orbit Shift - Tap to switch gravity and navigate the zigzag galaxy path without crashing into asteroids.">
   <meta property="og:url" content="https://balinti.github.io/orbit-shift/">
-  <meta property="og:image" content="https://balinti.github.io/orbit-shift/preview.png">
-
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Orbit Shift - Free HTML5 Game">
-  <meta name="twitter:description" content="Tap to switch orbit lanes and match polarity gates. How long can you survive?">
-  <meta name="twitter:image" content="https://balinti.github.io/orbit-shift/preview.png">
+  <meta property="og:image" content="https://balinti.github.io/orbit-shift/og-image.png">
 
   <!-- AdSense -->
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4099346100621490" crossorigin="anonymous"></script>
@@ -34,13 +29,10 @@
       font-family: 'Segoe UI', system-ui, sans-serif;
       color: #ccc;
     }
-    #gameRoot {
+    #app {
       position: relative;
-      width: 100%;
-      max-width: 420px;
-      height: 100svh;
-      height: 100vh; /* fallback */
-      max-height: 750px;
+      width: min(420px, 100vw);
+      height: min(750px, 100vh);
       flex-shrink: 0;
     }
     canvas {
@@ -50,649 +42,793 @@
       touch-action: manipulation;
       cursor: pointer;
     }
-    #about {
-      max-width: 420px;
-      width: 100%;
-      padding: 12px 16px 20px;
-      font-size: 12px;
-      line-height: 1.6;
-      color: #667;
-      text-align: center;
+    #seo-text {
+      position: absolute;
+      width: 1px; height: 1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
     }
-    #about h2 { font-size: 13px; color: #889; margin-bottom: 4px; }
-    #about a  { color: #7af; text-decoration: none; }
   </style>
 </head>
 <body>
-<div id="gameRoot">
+<div id="app">
   <canvas id="c"></canvas>
+  <p id="seo-text">Orbit Shift is a free browser HTML5 hyper-casual game. Tap to flip between inner and outer orbit rings, dodge gates, and set a high score. Play instantly — no download needed.</p>
 </div>
-<section id="about">
-  <h2>How to Play — Orbit Shift</h2>
-  <p>Your ship orbits a planet on one of two rings. <strong>Tap / Space / Enter</strong> to change polarity or switch lanes via a Slingshot Window. Match the gate's color &amp; symbol to score points. One shield saves your first mistake. Survive as long as possible!</p>
-</section>
-
 <script>
 'use strict';
-// ─── Constants ─────────────────────────────────────────────────────────────
-const LS_KEY    = 'orbitshift_highscore';
-const DPR       = Math.min(window.devicePixelRatio || 1, 2);
-const TAU       = Math.PI * 2;
-const POLARITIES = [
-  { hue: 30,  label: '●', name: 'dot'      },  // orange
-  { hue: 200, label: '▲', name: 'triangle' },  // cyan
-  { hue: 310, label: '◆', name: 'diamond'  },  // magenta
-];
+// ─── constants ───────────────────────────────────────────────────────────────
+const LS_KEY = 'orbitshift_highscore_v1';
+const TWO_PI = Math.PI * 2;
+const INNER = 0, OUTER = 1;
 
-// ─── Canvas / layout ───────────────────────────────────────────────────────
+// ─── canvas setup ────────────────────────────────────────────────────────────
 const canvas = document.getElementById('c');
-const ctx    = canvas.getContext('2d');
-let W, H, cx, cy, innerR, outerR;
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0, DPR = 1;
 
 function resize() {
-  const root = document.getElementById('gameRoot');
-  const rect  = root.getBoundingClientRect();
-  W = rect.width;  H = rect.height;
-  canvas.width  = W * DPR;
-  canvas.height = H * DPR;
+  const rect = canvas.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = rect.width;
+  H = rect.height;
+  canvas.width = Math.round(W * DPR);
+  canvas.height = Math.round(H * DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  cx = W / 2;
-  cy = H / 2 + H * 0.04;
-  const r = Math.min(W, H) / 2;
-  innerR = r * 0.42;
-  outerR = r * 0.70;
 }
 window.addEventListener('resize', resize);
 resize();
 
-// ─── Math helpers ──────────────────────────────────────────────────────────
-function angDiff(a, b) {
-  let d = ((b - a) % TAU + TAU) % TAU;
-  if (d > Math.PI) d -= TAU;
-  return d;
-}
-function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-function rand(lo, hi)  { return lo + Math.random() * (hi - lo); }
-function randInt(lo, hi) { return Math.floor(rand(lo, hi + 1)); }
-function hsl(h, s, l, a = 1) { return `hsla(${h},${s}%,${l}%,${a})`; }
+// ─── helpers ─────────────────────────────────────────────────────────────────
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const angleDiff = (a, b) => { let d = ((b - a) % TWO_PI + TWO_PI) % TWO_PI; return d > Math.PI ? d - TWO_PI : d; };
+const hsl = (h, s, l, a = 1) => `hsla(${h|0},${s|0}%,${l|0}%,${a})`;
+const rng = (lo, hi) => lo + Math.random() * (hi - lo);
 
-// ─── State ─────────────────────────────────────────────────────────────────
-let state, shake, particles, gates;
+// ─── URL challenge params ─────────────────────────────────────────────────────
+const urlParams = new URLSearchParams(location.search);
+const challengeScore = parseInt(urlParams.get('challengeScore')) || 0;
+const challengeSeed = urlParams.get('seed') || '';
 
-function initState() {
-  state = {
-    phase:      'start',   // 'start' | 'playing' | 'gameover'
-    score:      0,
-    best:       parseInt(localStorage.getItem(LS_KEY)) || 0,
-    t:          0,
-    streak:     0,
-    shield:     true,
-    shieldBreak: false,
-    unlocked3rd: false,
-    player: {
-      ring:    'inner',
-      angle:   -Math.PI / 2,
-      dir:     1,          // +1 CW, -1 CCW
-      polIdx:  0,
-      speed:   1.3,
-    },
-    sling: {
-      ang:  Math.PI / 2,  // opposite side from player start
-      half: 0.55,
-      drift: 0,
-    },
-    diff: {
-      gateInterval: 2.8,
-      nextGate:     2.2,
-      speed:        1.3,
-    },
+// ─── state ────────────────────────────────────────────────────────────────────
+let state = 'start'; // start | playing | gameover
+let highScore = parseInt(localStorage.getItem(LS_KEY)) || 0;
+
+// game world
+let player, gates, particles, score, bestScore;
+let innerTime, perfectStreak, totalPerfect;
+let timeScale, slowMoTimer;
+let trauma, bgHue, bgHueSpeed;
+let diffTimer, gateInterval, gateSpeed;
+let gameTime;
+
+// share button bounding box
+let shareBtn = null;
+
+function initGame() {
+  player = {
+    ring: OUTER,
+    angle: -Math.PI / 2,   // top of circle
+    angularVelocity: 1.4,  // rad/s
+    dir: 1,
+    r: 0,                  // current display radius (lerps)
+    targetR: 0,
+    thrusterTimer: 0,
   };
-  shake     = { x: 0, y: 0, mag: 0 };
+  gates = [];
   particles = [];
-  gates     = [];
+  score = 0;
+  bestScore = highScore;
+  innerTime = 0;
+  perfectStreak = 0;
+  totalPerfect = 0;
+  timeScale = 1;
+  slowMoTimer = 0;
+  trauma = 0;
+  bgHue = 220;
+  bgHueSpeed = 4; // deg/s
+  diffTimer = 0;
+  gateInterval = 3.5;
+  gateSpeed = 0.9;
+  gameTime = 0;
+  shareBtn = null;
+
+  const radii = ringRadii();
+  player.r = radii[OUTER];
+  player.targetR = radii[OUTER];
 }
 
-function numPol() { return state.unlocked3rd ? 3 : 2; }
-function mulOf(streak) {
-  if (streak < 3)  return 1;
-  if (streak < 6)  return 1.5;
-  if (streak < 10) return 2;
-  return 3;
+function ringRadii() {
+  const minDim = Math.min(W, H);
+  return [minDim * 0.26, minDim * 0.43];
 }
 
-// ─── Input ─────────────────────────────────────────────────────────────────
-function onTap() {
-  if (state.phase === 'start')    { startGame(); return; }
-  if (state.phase === 'gameover') { initState(); return; }
-  if (state.phase === 'playing')  { handleTap(); }
-}
-
-canvas.addEventListener('pointerdown', e => { e.preventDefault(); onTap(); });
-window.addEventListener('keydown', e => {
-  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); onTap(); }
-  if (e.code === 'KeyS' && state && state.phase === 'gameover') doShare();
-});
-
-function startGame() {
-  initState();
-  state.phase = 'playing';
-}
-
-function handleTap() {
-  const p = state.player;
-  const s = state.sling;
-  const inWindow = Math.abs(angDiff(p.angle, s.ang)) < s.half;
-
-  if (inWindow) {
-    p.ring   = (p.ring === 'inner') ? 'outer' : 'inner';
-    p.polIdx = (p.polIdx + 1) % numPol();
-    spawnParticlesBurst(playerX(), playerY(), POLARITIES[p.polIdx].hue, 14, 80, 180);
-  } else {
-    p.polIdx = (p.polIdx + 1) % numPol();
-  }
-}
-
-function playerX() {
-  const p = state.player;
-  return cx + Math.cos(p.angle) * ((p.ring === 'inner') ? innerR : outerR);
-}
-function playerY() {
-  const p = state.player;
-  return cy + Math.sin(p.angle) * ((p.ring === 'inner') ? innerR : outerR);
-}
-
-// ─── Particles ─────────────────────────────────────────────────────────────
-function spawnParticlesBurst(x, y, hue, n, spdLo, spdHi) {
-  for (let i = 0; i < n; i++) {
-    const ang = rand(0, TAU);
-    const spd = rand(spdLo, spdHi);
+// ─── particles ───────────────────────────────────────────────────────────────
+function spawnParticles(x, y, count, hue, speed, size, life) {
+  for (let i = 0; i < count; i++) {
+    const ang = rng(0, TWO_PI);
+    const spd = rng(speed * 0.4, speed);
     particles.push({
       x, y,
       vx: Math.cos(ang) * spd,
       vy: Math.sin(ang) * spd,
-      life: 1, maxLife: rand(0.4, 1.0),
-      r: rand(2, 5.5),
-      hue, sat: 90, lit: 68,
+      life, maxLife: life,
+      hue: hue + rng(-20, 20),
+      size: rng(size * 0.5, size),
+      alpha: 1,
     });
   }
 }
 
-// ─── Gate spawn ────────────────────────────────────────────────────────────
+function spawnThruster(x, y, ring) {
+  const hue = ring === INNER ? 300 : 180; // magenta / cyan
+  const ang = rng(0, TWO_PI);
+  const spd = rng(20, 60);
+  particles.push({
+    x, y,
+    vx: Math.cos(ang) * spd,
+    vy: Math.sin(ang) * spd,
+    life: rng(0.15, 0.35), maxLife: 0.35,
+    hue, size: rng(2, 4), alpha: 1,
+    thruster: true,
+  });
+}
+
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vx *= 0.92;
+    p.vy *= 0.92;
+    p.life -= dt;
+    p.alpha = clamp(p.life / p.maxLife, 0, 1);
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.save();
+    ctx.globalAlpha = p.alpha * (p.thruster ? 0.7 : 1);
+    ctx.fillStyle = hsl(p.hue, 100, 65);
+    ctx.shadowBlur = p.thruster ? 4 : 8;
+    ctx.shadowColor = hsl(p.hue, 100, 70);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, TWO_PI);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ─── gates ───────────────────────────────────────────────────────────────────
 function spawnGate() {
-  const p   = state.player;
-  const t   = state.t;
-  const cnt = (t > 25 && Math.random() < 0.4) ? 2 : 1;
+  const radii = ringRadii();
+  // Pick ring(s); occasionally span both
+  const bothRings = Math.random() < 0.18 && gameTime > 12;
+  const ring = bothRings ? -1 : (Math.random() < 0.45 ? INNER : OUTER);
 
-  for (let i = 0; i < cnt; i++) {
-    const ring   = (i === 0) ? p.ring : ((p.ring === 'inner') ? 'outer' : 'inner');
-    const feint  = (t > 45) && Math.random() < 0.35;
-    const polIdx = randInt(0, numPol() - 1);
-    const ahead  = p.dir * rand(2.2, 3.1);
-    const ang    = ((p.angle + ahead) % TAU + TAU) % TAU;
+  // Place gate ahead of player (in travel direction)
+  const ahead = player.angle + player.dir * (Math.PI * 0.75 + rng(0, Math.PI * 0.4));
+  const arcSpan = rng(0.55, 1.1); // radians of danger arc
 
-    gates.push({
-      ring, angle: ang,
-      speed:   state.diff.speed * ((ring === 'inner') ? 1.0 : 0.82),
-      dir:     p.dir,
-      polIdx, feint,
-      half:    0.17,
-      passed:  false,
-      cleared: false,
-      flash:   0,
-    });
+  const makeGateObj = (r) => ({
+    ring: r,
+    radius: radii[r],
+    centerAngle: ahead,
+    arcSpan,
+    speed: gateSpeed * (r === INNER ? 1.15 : 1.0),
+    dir: (Math.random() < 0.5 ? 1 : -1),
+    phase: 'tele',      // tele -> act -> done
+    phaseTimer: 0,
+    TELE: 2.0,
+    ACT: 2.2,
+    DONE: 0.5,
+    opacity: 0,
+    lethal: false,
+  });
+
+  if (bothRings) {
+    gates.push(makeGateObj(INNER));
+    gates.push(makeGateObj(OUTER));
+  } else {
+    gates.push(makeGateObj(ring));
   }
 }
 
-// ─── Update ────────────────────────────────────────────────────────────────
-let lastTime = 0;
-
-function update(ts) {
-  const rawDt = (ts - lastTime) / 1000;
-  lastTime = ts;
-  const dt = clamp(rawDt, 0, 0.1);
-
-  if (state.phase !== 'playing') return;
-
-  state.t += dt;
-  const t = state.t;
-
-  // Unlock 3rd polarity
-  if (!state.unlocked3rd && (state.score >= 8 || t >= 12)) state.unlocked3rd = true;
-
-  // Difficulty ramp
-  const ramp = Math.min(t / 90, 1);
-  state.diff.speed        = 1.3 + ramp * 1.6;
-  state.diff.gateInterval = Math.max(1.2, 2.8 - t * 0.018);
-  state.diff.nextGate    -= dt;
-  if (state.diff.nextGate <= 0) {
-    spawnGate();
-    state.diff.nextGate = state.diff.gateInterval * rand(0.8, 1.3);
-  }
-
-  // Player move
-  const p = state.player;
-  p.speed = state.diff.speed;
-  p.angle += p.dir * p.speed * dt;
-
-  // Slingshot window
-  const s  = state.sling;
-  s.half   = clamp(0.55 - t * 0.003, 0.22, 0.55);
-  if (t > 45) {
-    s.drift = Math.sin(t * 0.4) * 0.5;
-    s.ang  += s.drift * dt;
-  } else {
-    s.ang   = p.angle + Math.PI; // opposite side
-  }
-
-  // Gates
+function updateGates(dt) {
   for (let i = gates.length - 1; i >= 0; i--) {
     const g = gates[i];
-    g.angle += g.dir * g.speed * dt;
-    g.flash  = Math.max(0, g.flash - dt * 3.5);
+    g.centerAngle += g.dir * g.speed * dt * timeScale;
+    g.phaseTimer += dt * timeScale;
 
-    if (g.cleared || g.passed) continue;
-
-    const sameRing = (g.ring === p.ring);
-    const overlap  = sameRing && Math.abs(angDiff(p.angle, g.angle)) < (g.half + 0.13);
-
-    if (overlap) {
-      if (g.polIdx === p.polIdx || g.feint) {
-        // Cleared
-        g.cleared = true;
-        if (!g.feint) {
-          const mul = mulOf(state.streak);
-          state.score += Math.max(1, Math.round(mul));
-          state.streak++;
-          if (state.score > state.best) {
-            state.best = state.score;
-            localStorage.setItem(LS_KEY, state.best);
-          }
-        }
-        const r2 = (g.ring === 'inner') ? innerR : outerR;
-        const gx = cx + Math.cos(g.angle) * r2;
-        const gy = cy + Math.sin(g.angle) * r2;
-        spawnParticlesBurst(gx, gy, POLARITIES[g.polIdx].hue, state.streak >= 3 ? 20 : 10, 80, 200);
-        g.flash = 0.35;
-      } else if (!g.feint) {
-        hitPlayer(g);
-        g.passed = true;
-      }
+    if (g.phase === 'tele') {
+      g.opacity = clamp(g.phaseTimer / g.TELE, 0, 1);
+      if (g.phaseTimer >= g.TELE) { g.phase = 'act'; g.phaseTimer = 0; g.lethal = true; }
+    } else if (g.phase === 'act') {
+      g.opacity = 1;
+      if (g.phaseTimer >= g.ACT) { g.phase = 'done'; g.phaseTimer = 0; }
+    } else {
+      g.opacity = 1 - g.phaseTimer / g.DONE;
+      if (g.phaseTimer >= g.DONE) { gates.splice(i, 1); }
     }
-
-    // Gate far behind — discard
-    if (angDiff(p.angle, g.angle) * p.dir < -Math.PI * 1.1) g.passed = true;
-  }
-
-  // GC
-  gates     = gates.filter(g => (!g.passed && !g.cleared) || g.flash > 0);
-  if (gates.length > 30) gates.splice(0, gates.length - 30);
-
-  // Particles
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const pt = particles[i];
-    pt.x    += pt.vx * dt;
-    pt.y    += pt.vy * dt;
-    pt.vx   *= Math.pow(0.90, dt * 60);
-    pt.vy   *= Math.pow(0.90, dt * 60);
-    pt.life -= dt / pt.maxLife;
-    if (pt.life <= 0) particles.splice(i, 1);
-  }
-  if (particles.length > 200) particles.splice(0, particles.length - 200);
-
-  // Shake decay
-  shake.mag *= Math.pow(0.05, dt);
-  shake.x = (Math.random() - 0.5) * shake.mag;
-  shake.y = (Math.random() - 0.5) * shake.mag;
-}
-
-function hitPlayer() {
-  if (state.shield) {
-    state.shield     = false;
-    state.shieldBreak = true;
-    state.streak      = 0;
-    shake.mag = 18;
-    spawnParticlesBurst(playerX(), playerY(), 55, 20, 80, 230);
-    setTimeout(() => { if (state) state.shieldBreak = false; }, 600);
-  } else {
-    // Death
-    spawnParticlesBurst(playerX(), playerY(), rand(0, 360), 30, 100, 320);
-    shake.mag = 42;
-    if (state.score > state.best) {
-      state.best = state.score;
-      localStorage.setItem(LS_KEY, state.best);
-    }
-    state.phase = 'gameover';
   }
 }
 
-// ─── Draw ──────────────────────────────────────────────────────────────────
-// Persistent stars
-const STARS = Array.from({length: 65}, () => ({
-  x: Math.random(), y: Math.random(),
-  r: rand(0.3, 1.6),
-  bri: rand(0.2, 0.8),
-  ph: rand(0, TAU),
-}));
+function drawGates(cx, cy) {
+  const radii = ringRadii();
+  for (const g of gates) {
+    if (g.opacity <= 0) continue;
+    const r = g.radius;
+    const half = g.arcSpan / 2;
+    const startA = g.centerAngle - half;
+    const endA = g.centerAngle + half;
 
-function draw(ts) {
-  const sec = ts / 1000;
-  ctx.save();
-  ctx.translate(shake.x, shake.y);
+    const hueGate = g.ring === INNER ? 0 : 30; // red/orange
+    const alpha = g.opacity;
 
-  // Background
-  const bg = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.75);
-  bg.addColorStop(0, '#12122a');
-  bg.addColorStop(1, '#05050f');
-  ctx.fillStyle = bg;
-  ctx.fillRect(-shake.x - 2, -shake.y - 2, W + 4, H + 4);
+    ctx.save();
+    ctx.globalAlpha = alpha;
 
-  // Stars
-  for (const s of STARS) {
-    const lum = s.bri * (0.7 + 0.3 * Math.sin(sec * 0.9 + s.ph));
-    ctx.fillStyle = `rgba(255,255,255,${lum})`;
+    // Glow underlay
+    ctx.strokeStyle = hsl(hueGate, 100, 60, 0.3);
+    ctx.lineWidth = g.lethal ? 14 : 8;
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = hsl(hueGate, 100, 50);
     ctx.beginPath();
-    ctx.arc(s.x * W, s.y * H, s.r, 0, TAU);
-    ctx.fill();
-  }
-
-  // Orbit rings
-  drawOrbit(innerR);
-  drawOrbit(outerR);
-
-  // Slingshot window
-  if (state.phase === 'playing') drawSlingshotWindow();
-
-  // Planet
-  drawPlanet();
-
-  // Gates
-  for (const g of gates) drawGate(g);
-
-  // Particles
-  for (const pt of particles) {
-    const a = Math.max(0, pt.life);
-    ctx.beginPath();
-    ctx.arc(pt.x, pt.y, pt.r * a, 0, TAU);
-    ctx.fillStyle = hsl(pt.hue, pt.sat, pt.lit, a * 0.9);
-    ctx.fill();
-  }
-
-  // Player
-  if (state.phase !== 'start') drawPlayer(sec);
-
-  // HUD
-  if (state.phase === 'playing') drawHUD();
-
-  // Overlays
-  if (state.phase === 'start')    drawStart();
-  if (state.phase === 'gameover') drawGameover();
-
-  ctx.restore();
-}
-
-function drawOrbit(r) {
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, TAU);
-  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-  ctx.lineWidth   = 1.5;
-  ctx.stroke();
-}
-
-function drawSlingshotWindow() {
-  const s = state.sling;
-  for (const [ring, r] of [['inner', innerR], ['outer', outerR]]) {
-    const playerRing = state.player.ring === ring;
-    const alp = playerRing ? 0.22 : 0.09;
-    const lw  = playerRing ? 10 : 5;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, s.ang - s.half, s.ang + s.half);
-    ctx.strokeStyle = `rgba(255,225,90,${alp})`;
-    ctx.lineWidth   = lw;
+    ctx.arc(cx, cy, r, startA, endA);
     ctx.stroke();
-    // Edge markers
-    for (const side of [-1, 1]) {
-      const ea = s.ang + side * s.half;
+
+    // Core arc
+    ctx.strokeStyle = hsl(hueGate, 100, g.lethal ? 70 : 55);
+    ctx.lineWidth = 4;
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, startA, endA);
+    ctx.stroke();
+
+    // Telegraph pulse during tele phase
+    if (g.phase === 'tele') {
+      const pulse = Math.sin(g.phaseTimer * 8) * 0.5 + 0.5;
+      ctx.globalAlpha = alpha * pulse * 0.5;
+      ctx.strokeStyle = hsl(hueGate + 30, 100, 80);
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 5;
       ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(ea) * (r - 7), cy + Math.sin(ea) * (r - 7));
-      ctx.lineTo(cx + Math.cos(ea) * (r + 7), cy + Math.sin(ea) * (r + 7));
-      ctx.strokeStyle = `rgba(255,225,90,${alp * 2.5})`;
-      ctx.lineWidth   = 2;
+      ctx.arc(cx, cy, r + 8, startA, endA);
       ctx.stroke();
     }
+
+    ctx.restore();
   }
 }
 
-function drawPlanet() {
-  const g1 = ctx.createRadialGradient(cx - 7, cy - 7, 2, cx, cy, 24);
-  g1.addColorStop(0, '#8cf');
-  g1.addColorStop(0.5, '#37d');
-  g1.addColorStop(1, '#113');
-  ctx.beginPath();
-  ctx.arc(cx, cy, 22, 0, TAU);
-  ctx.fillStyle = g1;
-  ctx.fill();
-  // Glow halo
-  const g2 = ctx.createRadialGradient(cx, cy, 20, cx, cy, 52);
-  g2.addColorStop(0, 'rgba(100,160,255,0.13)');
-  g2.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.beginPath();
-  ctx.arc(cx, cy, 52, 0, TAU);
-  ctx.fillStyle = g2;
-  ctx.fill();
+function checkGateCollision(cx, cy) {
+  const radii = ringRadii();
+  for (const g of gates) {
+    if (!g.lethal) continue;
+    if (g.ring !== player.ring) continue;
+    // Angular check
+    const diff = Math.abs(angleDiff(player.angle, g.centerAngle));
+    if (diff < g.arcSpan / 2 + 0.12) {
+      return true;
+    }
+  }
+  return false;
 }
 
-function drawGate(g) {
-  const r   = (g.ring === 'inner') ? innerR : outerR;
-  const pol = POLARITIES[g.polIdx];
-  const alp = g.feint ? 0.32 : 1.0;
-  const lw  = g.feint ? 4 : 7;
-
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, g.angle - g.half, g.angle + g.half);
-  ctx.strokeStyle = hsl(pol.hue, 88, 60, alp);
-  ctx.lineWidth   = lw;
-  if (g.flash > 0) {
-    ctx.shadowBlur  = 22 * (g.flash / 0.35);
-    ctx.shadowColor = hsl(pol.hue, 100, 72);
+function checkPerfectFlip() {
+  // "Perfect flip" = passed very close to a gate on the OTHER ring just after flipping
+  const radii = ringRadii();
+  const otherRing = player.ring === INNER ? OUTER : INNER;
+  for (const g of gates) {
+    if (!g.lethal) continue;
+    if (g.ring !== otherRing) continue;
+    const diff = Math.abs(angleDiff(player.angle, g.centerAngle));
+    if (diff < g.arcSpan / 2 + 0.2 && diff > g.arcSpan / 2 - 0.05) {
+      return true;
+    }
   }
-  ctx.stroke();
-  ctx.shadowBlur = 0;
-
-  // Symbol
-  const mx = cx + Math.cos(g.angle) * r;
-  const my = cy + Math.sin(g.angle) * r;
-  ctx.save();
-  ctx.translate(mx, my);
-  ctx.font         = `bold ${g.feint ? 10 : 12}px sans-serif`;
-  ctx.fillStyle    = hsl(pol.hue, 85, 82, alp);
-  ctx.textAlign    = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(pol.label, 0, 0);
-  ctx.restore();
+  return false;
 }
 
-function drawPlayer(sec) {
-  const p   = state.player;
-  const r   = (p.ring === 'inner') ? innerR : outerR;
-  const px  = cx + Math.cos(p.angle) * r;
-  const py  = cy + Math.sin(p.angle) * r;
-  const pol = POLARITIES[p.polIdx];
+// ─── scoring ─────────────────────────────────────────────────────────────────
+function getMultiplier() {
+  let m = player.ring === INNER ? 2.0 : 1.0;
+  if (gameTime > 30) m *= 1.5;
+  return m;
+}
 
-  // Glow
-  const gl = ctx.createRadialGradient(px, py, 0, px, py, 24);
-  gl.addColorStop(0, hsl(pol.hue, 100, 72, 0.5));
-  gl.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.beginPath();
-  ctx.arc(px, py, 24, 0, TAU);
-  ctx.fillStyle = gl;
-  ctx.fill();
-
-  // Triangle ship pointing in travel direction
-  const heading = p.angle + Math.PI / 2 * (p.dir > 0 ? 1 : -1);
-  ctx.save();
-  ctx.translate(px, py);
-  ctx.rotate(heading);
-  ctx.beginPath();
-  ctx.moveTo(0, -10);
-  ctx.lineTo(7,  8);
-  ctx.lineTo(-7, 8);
-  ctx.closePath();
-  ctx.fillStyle   = hsl(pol.hue, 90, 68);
-  ctx.strokeStyle = hsl(pol.hue, 50, 90);
-  ctx.lineWidth   = 1.5;
-  ctx.fill();
-  ctx.stroke();
-  // Polarity label inside
-  ctx.font         = 'bold 8px sans-serif';
-  ctx.fillStyle    = '#fff';
-  ctx.textAlign    = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(pol.label, 0, 1);
-  ctx.restore();
-
-  // Shield ring
-  if (state.shield) {
-    const pulse = 0.5 + 0.5 * Math.sin(sec * 5.5);
-    ctx.beginPath();
-    ctx.arc(px, py, 15, 0, TAU);
-    ctx.strokeStyle = `rgba(255,225,70,${0.55 + 0.3 * pulse})`;
-    ctx.lineWidth   = 2;
-    ctx.stroke();
+// ─── input ───────────────────────────────────────────────────────────────────
+function onInput(e) {
+  if (e.target && e.target.tagName === 'A') return;
+  if (state === 'start') {
+    state = 'playing';
+    return;
   }
-  if (state.shieldBreak) {
-    ctx.beginPath();
-    ctx.arc(px, py, 17, 0, TAU);
-    ctx.strokeStyle = 'rgba(255,60,60,0.85)';
-    ctx.lineWidth   = 3;
-    ctx.stroke();
+  if (state === 'gameover') {
+    // Check share button tap
+    if (shareBtn) {
+      const ex = e.clientX ?? (e.touches && e.touches[0]?.clientX);
+      const ey = e.clientY ?? (e.touches && e.touches[0]?.clientY);
+      if (ex !== undefined) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = (ex - rect.left) / rect.width * W;
+        const my = (ey - rect.top) / rect.height * H;
+        if (mx >= shareBtn.x && mx <= shareBtn.x + shareBtn.w &&
+            my >= shareBtn.y && my <= shareBtn.y + shareBtn.h) {
+          doShare();
+          return;
+        }
+      }
+    }
+    state = 'playing';
+    initGame();
+    return;
+  }
+  if (state === 'playing') {
+    flipRing();
   }
 }
 
-function drawHUD() {
-  const mul = mulOf(state.streak);
-  ctx.textBaseline = 'top';
+function flipRing() {
+  const prevRing = player.ring;
+  player.ring = player.ring === INNER ? OUTER : INNER;
+  const radii = ringRadii();
+  player.targetR = radii[player.ring];
 
-  // Score
-  ctx.font      = 'bold 30px sans-serif';
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center';
-  ctx.fillText(state.score, cx, 14);
-
-  // Multiplier
-  if (mul > 1) {
-    ctx.font      = 'bold 13px sans-serif';
-    ctx.fillStyle = hsl(55, 100, 65);
-    ctx.fillText(`×${mul}`, cx, 50);
-  }
-
-  // Shield indicator
-  ctx.font      = '12px sans-serif';
-  ctx.textAlign = 'right';
-  ctx.fillStyle = state.shield ? 'rgba(255,215,55,0.9)' : 'rgba(255,255,255,0.18)';
-  ctx.fillText('⚡ Shield', W - 10, 14);
-
-  // Streak
-  if (state.streak >= 2) {
-    ctx.font      = '12px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillText(`Streak ${state.streak}`, 10, 14);
+  // Check perfect flip
+  if (checkPerfectFlip()) {
+    perfectStreak++;
+    totalPerfect++;
+    score += 50 * perfectStreak;
+    slowMoTimer = 0.12;
+    timeScale = 0.35;
+    trauma = Math.min(trauma + 0.2, 0.5);
+    const px = W / 2 + Math.cos(player.angle) * player.r;
+    const py = H / 2 + Math.sin(player.angle) * player.r;
+    spawnParticles(px, py, 28, player.ring === INNER ? 300 : 180, 200, 5, 0.6);
+  } else {
+    perfectStreak = 0;
   }
 }
 
-function drawOverlayBg() {
-  ctx.fillStyle = 'rgba(4,4,18,0.62)';
-  ctx.fillRect(0, 0, W, H);
-}
-
-function drawStart() {
-  drawOverlayBg();
-  ctx.textAlign    = 'center';
-  ctx.textBaseline = 'middle';
-
-  ctx.font      = 'bold 40px sans-serif';
-  ctx.fillStyle = '#fff';
-  ctx.fillText('Orbit Shift', cx, cy - 85);
-
-  ctx.font      = '15px sans-serif';
-  ctx.fillStyle = 'rgba(170,195,255,0.85)';
-  ctx.fillText('Match gates. Switch lanes.', cx, cy - 42);
-
-  // Polarity preview
-  for (let i = 0; i < 3; i++) {
-    const pol = POLARITIES[i];
-    ctx.font      = 'bold 18px sans-serif';
-    ctx.fillStyle = hsl(pol.hue, 88, 65);
-    ctx.fillText(pol.label, cx - 50 + i * 50, cy + 12);
-  }
-  ctx.font      = '11px sans-serif';
-  ctx.fillStyle = 'rgba(200,200,255,0.45)';
-  ctx.fillText('3 polarities to match', cx, cy + 38);
-
-  // Prompt
-  const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 420);
-  ctx.font      = 'bold 17px sans-serif';
-  ctx.fillStyle = `rgba(255,255,255,${pulse})`;
-  ctx.fillText('Tap  /  Space  to Start', cx, cy + 85);
-
-  if (state.best > 0) {
-    ctx.font      = '13px sans-serif';
-    ctx.fillStyle = 'rgba(255,195,70,0.75)';
-    ctx.fillText(`Best: ${state.best}`, cx, cy + 118);
-  }
-}
-
-function drawGameover() {
-  drawOverlayBg();
-  ctx.textAlign    = 'center';
-  ctx.textBaseline = 'middle';
-
-  ctx.font      = 'bold 34px sans-serif';
-  ctx.fillStyle = '#fff';
-  ctx.fillText('Game Over', cx, cy - 75);
-
-  ctx.font      = 'bold 24px sans-serif';
-  ctx.fillStyle = hsl(55, 100, 68);
-  ctx.fillText(`Score: ${state.score}`, cx, cy - 28);
-
-  ctx.font      = '16px sans-serif';
-  ctx.fillStyle = 'rgba(255,195,90,0.75)';
-  ctx.fillText(`Best: ${state.best}`, cx, cy + 10);
-
-  const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 420);
-  ctx.font      = 'bold 17px sans-serif';
-  ctx.fillStyle = `rgba(255,255,255,${pulse})`;
-  ctx.fillText('Tap  /  Space  to Retry', cx, cy + 58);
-
-  ctx.font      = '12px sans-serif';
-  ctx.fillStyle = 'rgba(140,190,255,0.55)';
-  ctx.fillText('[ S ] — Challenge a friend', cx, cy + 90);
-}
-
-// ─── Share ─────────────────────────────────────────────────────────────────
 function doShare() {
-  const url  = `https://balinti.github.io/orbit-shift/?ref=share&score=${state.score}`;
-  const text = `I scored ${state.score} in Orbit Shift! Can you beat me?`;
+  const seed = 'DAILY-' + new Date().toISOString().slice(0, 10);
+  const url = location.origin + location.pathname + '?challengeScore=' + score + '&seed=' + seed;
+  const text = `I scored ${score} in Orbit Shift! Can you beat me? 🚀`;
   if (navigator.share) {
     navigator.share({ title: 'Orbit Shift', text, url }).catch(() => {});
   } else {
-    navigator.clipboard.writeText(`${text} ${url}`).then(() => {
-      alert('Copied to clipboard!');
-    }).catch(() => {
-      prompt('Copy this link:', url);
-    });
+    navigator.clipboard?.writeText(url + '\n' + text).then(() => {
+      // brief visual ack handled in draw
+    }).catch(() => {});
   }
 }
 
-// ─── Main loop ─────────────────────────────────────────────────────────────
+canvas.addEventListener('pointerdown', onInput);
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); onInput(e); }
+});
+
+// ─── main loop ────────────────────────────────────────────────────────────────
+let lastTime = 0;
 function loop(ts) {
-  update(ts);
-  draw(ts);
   requestAnimationFrame(loop);
+  const rawDt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+  if (rawDt <= 0) return;
+
+  if (state === 'playing') {
+    update(rawDt);
+  }
+  render(rawDt);
+}
+requestAnimationFrame((ts) => { lastTime = ts; requestAnimationFrame(loop); });
+
+// ─── update ───────────────────────────────────────────────────────────────────
+function update(rawDt) {
+  // slow-mo
+  if (slowMoTimer > 0) {
+    slowMoTimer -= rawDt;
+    if (slowMoTimer <= 0) { slowMoTimer = 0; timeScale = 1; }
+  }
+  const dt = rawDt * timeScale;
+
+  gameTime += dt;
+  bgHue = (bgHue + bgHueSpeed * rawDt) % 360;
+
+  // difficulty ramp
+  diffTimer += dt;
+  if (diffTimer > 8) {
+    diffTimer = 0;
+    gateInterval = Math.max(1.4, gateInterval - 0.18);
+    gateSpeed = Math.min(2.2, gateSpeed + 0.1);
+    player.angularVelocity = Math.min(3.0, player.angularVelocity + 0.06);
+  }
+
+  // trauma decay
+  trauma = Math.max(0, trauma - rawDt * 1.2);
+
+  // player movement
+  player.angle += player.dir * player.angularVelocity * dt;
+  player.r = lerp(player.r, player.targetR, 1 - Math.pow(0.01, rawDt * 12));
+
+  // inner time
+  if (player.ring === INNER) innerTime += dt;
+
+  // score
+  score += getMultiplier() * dt * 8;
+
+  // thruster particles
+  player.thrusterTimer -= dt;
+  if (player.thrusterTimer <= 0) {
+    player.thrusterTimer = 0.04;
+    const px = W / 2 + Math.cos(player.angle) * player.r;
+    const py = H / 2 + Math.sin(player.angle) * player.r;
+    spawnThruster(px, py, player.ring);
+  }
+
+  // gate spawning
+  if (!player._gateTimer) player._gateTimer = gateInterval * 0.5;
+  player._gateTimer -= dt;
+  if (player._gateTimer <= 0) {
+    player._gateTimer = gateInterval + rng(-0.3, 0.3);
+    spawnGate();
+  }
+
+  updateGates(dt);
+  updateParticles(rawDt);
+
+  // collision
+  if (checkGateCollision(W / 2, H / 2)) {
+    triggerDeath();
+  }
 }
 
-initState();
-requestAnimationFrame(ts => { lastTime = ts; loop(ts); });
+function triggerDeath() {
+  state = 'gameover';
+  trauma = 1;
+  if (score > highScore) {
+    highScore = Math.floor(score);
+    localStorage.setItem(LS_KEY, highScore);
+  }
+  const px = W / 2 + Math.cos(player.angle) * player.r;
+  const py = H / 2 + Math.sin(player.angle) * player.r;
+  spawnParticles(px, py, 60, player.ring === INNER ? 300 : 180, 350, 7, 1.0);
+  spawnParticles(px, py, 30, 50, 250, 4, 0.7);
+}
+
+// ─── render ───────────────────────────────────────────────────────────────────
+function render(dt) {
+  ctx.save();
+
+  // Screen shake
+  const shakeAmt = trauma * trauma * 18;
+  const sx = rng(-shakeAmt, shakeAmt);
+  const sy = rng(-shakeAmt, shakeAmt);
+  ctx.translate(W / 2 + sx, H / 2 + sy);
+  const drawX = -W / 2, drawY = -H / 2;
+
+  // Background gradient
+  const bg = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.max(W, H) * 0.7);
+  bg.addColorStop(0, hsl(bgHue, 30, 8));
+  bg.addColorStop(1, hsl(bgHue + 40, 20, 4));
+  ctx.fillStyle = bg;
+  ctx.fillRect(drawX, drawY, W, H);
+
+  // Stars
+  drawStars(drawX, drawY);
+
+  const cx = 0, cy = 0;
+  const radii = ringRadii();
+
+  // Core glow
+  const coreG = ctx.createRadialGradient(cx, cy, 0, cx, cy, radii[INNER] * 0.35);
+  coreG.addColorStop(0, hsl(bgHue + 60, 80, 80, 0.9));
+  coreG.addColorStop(0.5, hsl(bgHue + 30, 60, 40, 0.4));
+  coreG.addColorStop(1, 'transparent');
+  ctx.fillStyle = coreG;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radii[INNER] * 0.35, 0, TWO_PI);
+  ctx.fill();
+
+  // Rings
+  drawRings(cx, cy, radii);
+
+  // Gates
+  drawGates(cx, cy);
+
+  // Particles
+  ctx.save();
+  ctx.translate(drawX + W / 2, drawY + H / 2);
+  // Particles are stored in world coords (W/2-centered from canvas)
+  ctx.restore();
+  drawParticlesWorld(cx, cy);
+
+  // Player ship
+  if (state === 'playing' || state === 'gameover') {
+    drawShip(cx, cy);
+  }
+
+  ctx.restore();
+
+  // UI (no shake)
+  ctx.save();
+  if (state === 'start') drawStartScreen();
+  else if (state === 'playing') drawHUD();
+  else if (state === 'gameover') drawGameOver();
+  ctx.restore();
+}
+
+function drawStars(ox, oy) {
+  if (!drawStars._stars) {
+    drawStars._stars = [];
+    for (let i = 0; i < 80; i++) {
+      drawStars._stars.push({ x: rng(-210, 210), y: rng(-375, 375), r: rng(0.5, 1.5), a: rng(0.2, 0.7) });
+    }
+  }
+  ctx.fillStyle = '#fff';
+  for (const s of drawStars._stars) {
+    ctx.globalAlpha = s.a;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, TWO_PI);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawRings(cx, cy, radii) {
+  for (let ring = 0; ring < 2; ring++) {
+    const r = radii[ring];
+    const isInner = ring === INNER;
+    const active = state === 'playing' && player.ring === ring;
+    const mult = isInner ? getMultiplier() : 1;
+    const pulseIntensity = isInner ? Math.sin(Date.now() / 300) * 0.15 + 0.85 : 1;
+    const hueRing = isInner ? 300 : 180;
+    const alpha = active ? 0.55 : 0.25;
+
+    ctx.save();
+    ctx.strokeStyle = hsl(hueRing, 70, 60, alpha * pulseIntensity);
+    ctx.lineWidth = active ? 2.5 : 1.5;
+    ctx.shadowBlur = active ? 12 : 5;
+    ctx.shadowColor = hsl(hueRing, 80, 60);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, TWO_PI);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawParticlesWorld(cx, cy) {
+  // Particles stored with W/2, H/2 as origin offset
+  ctx.save();
+  ctx.translate(-W / 2, -H / 2);
+  drawParticles();
+  ctx.restore();
+}
+
+function drawShip(cx, cy) {
+  const px = Math.cos(player.angle) * player.r;
+  const py = Math.sin(player.angle) * player.r;
+  const angle = player.angle + Math.PI / 2 * player.dir;
+
+  const hueShip = player.ring === INNER ? 300 : 180;
+
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate(angle);
+
+  // glow
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = hsl(hueShip, 100, 70);
+
+  // ship body (triangle)
+  ctx.fillStyle = hsl(hueShip, 100, 75);
+  ctx.beginPath();
+  ctx.moveTo(0, -9);
+  ctx.lineTo(-6, 7);
+  ctx.lineTo(0, 4);
+  ctx.lineTo(6, 7);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// ─── UI screens ───────────────────────────────────────────────────────────────
+function drawStartScreen() {
+  ctx.save();
+  // dim overlay
+  ctx.fillStyle = 'rgba(5,5,20,0.72)';
+  ctx.fillRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H / 2;
+
+  // draw preview rings
+  const radii = ringRadii();
+  ctx.strokeStyle = hsl(bgHue + 120, 60, 50, 0.3);
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(cx, cy, radii[0], 0, TWO_PI); ctx.stroke();
+  ctx.strokeStyle = hsl(bgHue + 60, 60, 50, 0.3);
+  ctx.beginPath(); ctx.arc(cx, cy, radii[1], 0, TWO_PI); ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.font = 'bold 38px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = hsl(bgHue + 60, 80, 85);
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = hsl(bgHue + 60, 100, 60);
+  ctx.fillText('ORBIT SHIFT', cx, cy - 80);
+
+  ctx.font = '15px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = '#aac';
+  ctx.shadowBlur = 0;
+  ctx.fillText('Tap to flip ring · Dodge the gates', cx, cy - 42);
+
+  if (challengeScore > 0) {
+    ctx.font = 'bold 14px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = hsl(50, 100, 70);
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = hsl(50, 100, 50);
+    ctx.fillText(`Challenge: beat ${challengeScore}`, cx, cy - 14);
+  }
+
+  if (highScore > 0) {
+    ctx.font = '14px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = '#88aacc';
+    ctx.shadowBlur = 0;
+    ctx.fillText(`Best: ${Math.floor(highScore)}`, cx, cy + 14);
+  }
+
+  // tap to start
+  const pulse = Math.sin(Date.now() / 500) * 0.3 + 0.7;
+  ctx.globalAlpha = pulse;
+  ctx.font = 'bold 18px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = '#fff';
+  ctx.fillText('TAP TO START', cx, cy + 60);
+  ctx.globalAlpha = 1;
+
+  // ring labels
+  ctx.shadowBlur = 0;
+  ctx.font = '12px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = hsl(300, 80, 70, 0.8);
+  ctx.fillText('Inner × 2 score', cx, cy + radii[0] + 16);
+  ctx.fillStyle = hsl(180, 80, 70, 0.8);
+  ctx.fillText('Outer ring', cx, cy + radii[1] + 16);
+
+  ctx.restore();
+}
+
+function drawHUD() {
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+
+  // Score
+  ctx.font = 'bold 28px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = hsl(bgHue, 80, 70);
+  ctx.fillText(Math.floor(score), W / 2, 18);
+
+  // best
+  ctx.font = '13px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = '#88aacc';
+  ctx.shadowBlur = 0;
+  ctx.fillText('Best ' + Math.floor(Math.max(score, highScore)), W / 2, 52);
+
+  // multiplier badge
+  if (player.ring === INNER) {
+    ctx.font = 'bold 13px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = hsl(300, 100, 75);
+    ctx.shadowBlur = 6;
+    ctx.shadowColor = hsl(300, 100, 60);
+    ctx.fillText('× ' + getMultiplier().toFixed(1), W / 2, 70);
+  }
+
+  // perfect streak
+  if (perfectStreak > 0) {
+    ctx.font = 'bold 13px "Segoe UI", system-ui, sans-serif';
+    ctx.fillStyle = hsl(50, 100, 75);
+    ctx.shadowBlur = 6;
+    ctx.shadowColor = hsl(50, 100, 55);
+    ctx.fillText('PERFECT ×' + perfectStreak, W / 2, 88);
+  }
+
+  ctx.restore();
+}
+
+function drawGameOver() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(5,5,20,0.80)';
+  ctx.fillRect(0, 0, W, H);
+
+  const cx = W / 2, cy = H / 2;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.font = 'bold 34px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = hsl(0, 80, 70);
+  ctx.shadowBlur = 18;
+  ctx.shadowColor = hsl(0, 100, 50);
+  ctx.fillText('GAME OVER', cx, cy - 100);
+
+  ctx.shadowBlur = 0;
+  ctx.font = 'bold 44px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(Math.floor(score), cx, cy - 44);
+
+  ctx.font = '15px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = '#88aacc';
+  const isNew = score >= highScore;
+  if (isNew) {
+    ctx.fillStyle = hsl(50, 100, 75);
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = hsl(50, 100, 50);
+    ctx.fillText('NEW BEST!', cx, cy - 4);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#88aacc';
+  } else {
+    ctx.fillText('Best: ' + Math.floor(highScore), cx, cy - 4);
+  }
+
+  // stats
+  ctx.font = '13px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = '#7799bb';
+  ctx.fillText(`Inner time: ${innerTime.toFixed(1)}s  |  Perfects: ${totalPerfect}`, cx, cy + 26);
+
+  // tap to retry
+  const pulse = Math.sin(Date.now() / 500) * 0.3 + 0.7;
+  ctx.globalAlpha = pulse;
+  ctx.font = 'bold 17px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = '#ddeeff';
+  ctx.shadowBlur = 8;
+  ctx.shadowColor = '#aaccff';
+  ctx.fillText('TAP TO RETRY', cx, cy + 64);
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+
+  // Share button
+  const bw = 140, bh = 36, bx = cx - bw / 2, by = cy + 92;
+  shareBtn = { x: bx, y: by, w: bw, h: bh };
+
+  const sPulse = Math.sin(Date.now() / 700) * 0.15 + 0.85;
+  ctx.fillStyle = hsl(bgHue + 80, 60, 28, 0.85);
+  ctx.strokeStyle = hsl(bgHue + 80, 80, 65, sPulse);
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, bx, by, bw, bh, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.font = 'bold 14px "Segoe UI", system-ui, sans-serif';
+  ctx.fillStyle = hsl(bgHue + 80, 80, 82);
+  ctx.fillText('Share / Challenge', cx, by + bh / 2);
+
+  ctx.restore();
+}
+
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.lineTo(x + w - r, y);
+  c.arcTo(x + w, y, x + w, y + r, r);
+  c.lineTo(x + w, y + h - r);
+  c.arcTo(x + w, y + h, x + w - r, y + h, r);
+  c.lineTo(x + r, y + h);
+  c.arcTo(x, y + h, x, y + h - r, r);
+  c.lineTo(x, y + r);
+  c.arcTo(x, y, x + r, y, r);
+  c.closePath();
+}
+
+// ─── boot ─────────────────────────────────────────────────────────────────────
+initGame();
 </script>
 </body>
 </html>
