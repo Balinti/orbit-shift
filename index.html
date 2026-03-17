@@ -1,792 +1,580 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Orbit Shift - Free HTML5 Game</title>
-  <meta name="description" content="Play Orbit Shift - Dodge obstacles by tapping to zigzag through orbits while the galaxy's colors pulse and shift.">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0a1a">
-  <link rel="canonical" href="https://balinti.github.io/orbit-shift/">
-
-  <!-- Open Graph -->
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="Orbit Shift - Free HTML5 Game">
-  <meta property="og:description" content="Play Orbit Shift - Dodge obstacles by tapping to zigzag through orbits while the galaxy's colors pulse and shift.">
-  <meta property="og:url" content="https://balinti.github.io/orbit-shift/">
-  <meta property="og:image" content="https://balinti.github.io/orbit-shift/og-image.png">
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Orbit Shift - Free HTML5 Game">
-  <meta name="twitter:description" content="Play Orbit Shift - Dodge obstacles by tapping to zigzag through orbits while the galaxy's colors pulse and shift.">
-  <meta name="twitter:image" content="https://balinti.github.io/orbit-shift/og-image.png">
-
-  <!-- AdSense -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4099346100621490" crossorigin="anonymous"></script>
-
-  <!-- JSON-LD -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "VideoGame",
-    "name": "Orbit Shift",
-    "description": "Hyper-casual HTML5 game. Tap to hop between orbital rings, dodge debris, collect shards.",
-    "url": "https://balinti.github.io/orbit-shift/",
-    "genre": "Hyper-Casual",
-    "gamePlatform": "Web Browser",
-    "applicationCategory": "Game",
-    "operatingSystem": "Any"
-  }
-  </script>
-
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      width: 100%; height: 100%;
-      background: #0a0a1a;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: flex-start;
-      overflow-x: hidden;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      color: #ccc;
-    }
-    #app {
-      position: relative;
-      width: min(420px, 100vw);
-      height: min(750px, 100vh);
-      flex-shrink: 0;
-    }
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      touch-action: none;
-      cursor: pointer;
-    }
-    #seo-content {
-      width: min(420px, 100vw);
-      padding: 16px;
-      font-size: 14px;
-      line-height: 1.6;
-      color: #888;
-    }
-    #seo-content h2 { font-size: 16px; color: #aaa; margin: 12px 0 6px; }
-    #seo-content p, #seo-content li { margin-bottom: 6px; }
-    #seo-content ul { padding-left: 18px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Void Eject — Color Merge Tap Game</title>
+<meta name="description" content="Tap to merge matching color tiles orbiting a dying star. How long before the black hole wins? Free, instant, no install.">
+<meta name="keywords" content="hyper casual game, color merge game, tap game, browser game, free game, void eject">
+<meta property="og:title" content="Void Eject — Merge Before the Black Hole Wins">
+<meta property="og:description" content="6 colored tiles. 1 black hole. Tap to merge matching pairs before they get eaten. Instant play, no install.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://balinti.github.io/orbit-shift/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Void Eject — Merge Before the Black Hole Wins">
+<meta name="twitter:description" content="Tap to merge glowing color tiles. Don't let the black hole eat them. Free browser game.">
+<meta name="theme-color" content="#0a0a1a">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4099346100621490" crossorigin="anonymous"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;background:#0a0a1a;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;touch-action:none}
+#wrap{position:relative;width:min(420px,100vw);height:min(750px,100vh);display:flex;flex-direction:column;align-items:center;justify-content:center}
+canvas{display:block;border-radius:12px}
+#ui{position:absolute;top:16px;left:0;right:0;display:flex;justify-content:space-between;padding:0 20px;pointer-events:none;z-index:10}
+.ui-pill{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:6px 16px;color:#fff;font-size:13px;font-weight:600;letter-spacing:0.5px}
+#lives-wrap{display:flex;gap:6px;align-items:center}
+.heart{font-size:16px;transition:transform 0.2s}
+#overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;border-radius:12px;background:rgba(5,5,20,0.88);backdrop-filter:blur(6px)}
+#overlay.hidden{display:none}
+#ov-title{font-size:36px;font-weight:900;color:#fff;letter-spacing:2px;text-align:center;text-shadow:0 0 30px rgba(180,100,255,0.8)}
+#ov-sub{font-size:14px;color:rgba(255,255,255,0.55);text-align:center;line-height:1.6;max-width:260px}
+#ov-score{font-size:64px;font-weight:900;color:#fff;text-align:center;line-height:1;display:none}
+#ov-best-line{font-size:15px;color:rgba(255,255,255,0.45);text-align:center;display:none}
+#ov-newbest{font-size:18px;font-weight:800;color:#ffe066;text-align:center;display:none}
+#btn-retry{background:linear-gradient(135deg,#a855f7,#6366f1);border:none;color:#fff;font-size:18px;font-weight:800;padding:14px 48px;border-radius:40px;cursor:pointer;letter-spacing:1px;transition:transform 0.15s,opacity 0.15s;min-width:200px}
+#btn-retry:disabled{opacity:0.5;cursor:default}
+#btn-share{background:transparent;border:2px solid rgba(255,255,255,0.25);color:rgba(255,255,255,0.7);font-size:14px;font-weight:700;padding:10px 32px;border-radius:40px;cursor:pointer;letter-spacing:0.5px;transition:border-color 0.2s,color 0.2s;display:none}
+#btn-share:hover{border-color:rgba(255,255,255,0.6);color:#fff}
+#streak-hud{position:absolute;bottom:16px;left:0;right:0;text-align:center;pointer-events:none;z-index:10;font-size:12px;color:rgba(255,255,255,0.35);letter-spacing:1px;font-weight:600}
+#challenge-banner{position:absolute;top:56px;left:0;right:0;text-align:center;pointer-events:none;z-index:10;font-size:12px;color:#ffe066;font-weight:700;letter-spacing:0.5px;display:none}
+</style>
 </head>
 <body>
-<div id="app">
+<div id="wrap">
   <canvas id="c"></canvas>
-</div>
-<div id="seo-content">
-  <h2>How to Play Orbit Shift</h2>
-  <p>Your ship auto-orbits around the galactic core. Tap (or press Space/Enter) near a <strong>Bridge</strong> to hop to the adjacent ring. Dodge debris, collect crystal shards, and survive as long as possible!</p>
-  <h2>Tips & Tricks</h2>
-  <ul>
-    <li>Tap right as your ship enters a bridge window for a <strong>Perfect Hop</strong> bonus.</li>
-    <li>Inner rings spawn more Crystal Shards — worth 5 points each.</li>
-    <li>Near-miss a debris block without dying for a <strong>Graze Bonus</strong>.</li>
-    <li>After 70 seconds, electrified red ring segments appear — hop away quickly!</li>
-    <li>Chaining perfect hops builds a combo multiplier for big scores.</li>
-  </ul>
-  <h2>FAQ</h2>
-  <p><strong>Q: Is Orbit Shift free?</strong> A: Yes, completely free to play in any browser.</p>
-  <p><strong>Q: Does it work on mobile?</strong> A: Yes — tap anywhere to hop between rings.</p>
-  <p><strong>Q: How is the high score saved?</strong> A: Stored locally in your browser via localStorage.</p>
+  <div id="ui">
+    <div class="ui-pill" id="score-pill">0</div>
+    <div id="lives-wrap">
+      <span class="heart" id="h1">❤️</span>
+      <span class="heart" id="h2">❤️</span>
+      <span class="heart" id="h3">❤️</span>
+    </div>
+  </div>
+  <div id="challenge-banner"></div>
+  <div id="streak-hud"></div>
+  <div id="overlay">
+    <div id="ov-title">VOID EJECT</div>
+    <div id="ov-sub">Tap when two same-color tiles glow.<br>Don't let the black hole eat them.</div>
+    <div id="ov-score"></div>
+    <div id="ov-newbest"></div>
+    <div id="ov-best-line"></div>
+    <button id="btn-retry">TAP TO START</button>
+    <button id="btn-share">CHALLENGE A FRIEND</button>
+  </div>
 </div>
 <script>
 (function(){
 'use strict';
 
-// ── Canvas setup ──────────────────────────────────────────────────────────────
-const app = document.getElementById('app');
+const wrap = document.getElementById('wrap');
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
+const DPR = window.devicePixelRatio || 1;
 
-let W, H, cx, cy, DPR;
-function resize() {
-  const r = app.getBoundingClientRect();
-  W = r.width; H = r.height;
-  DPR = Math.min(window.devicePixelRatio || 1, 2);
-  canvas.width = W * DPR;
-  canvas.height = H * DPR;
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  cx = W / 2; cy = H / 2;
-  if (state !== 'playing') rebuildRings();
-}
-window.addEventListener('resize', resize);
+let CW,CH,CX,CY,ORBIT_R,TILE_R,STAR_R;
 
-// ── Ring geometry ─────────────────────────────────────────────────────────────
-let R = [], DR, NUM_RINGS;
-function rebuildRings() {
-  const base = Math.min(W, H) * 0.5;
-  DR = base * 0.18;
-  NUM_RINGS = Math.min(3, Math.floor((base * 0.7) / DR));
-  R = [];
-  for (let i = 0; i < NUM_RINGS; i++) R.push(base * 0.30 + i * DR);
+function resize(){
+  const W = Math.min(420, wrap.clientWidth);
+  const H = Math.min(750, wrap.clientHeight);
+  canvas.style.width = W+'px';
+  canvas.style.height = H+'px';
+  canvas.width = W*DPR;
+  canvas.height = H*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  CW=W; CH=H; CX=W/2; CY=H/2;
+  ORBIT_R = Math.min(W,H)*0.28;
+  TILE_R = ORBIT_R*0.18;
+  STAR_R = ORBIT_R*0.1;
+  buildStars();
 }
 
-// ── Game state ────────────────────────────────────────────────────────────────
-let state = 'start'; // 'start' | 'playing' | 'gameover'
-const LS_KEY = 'orbitshift_best';
-let best = parseInt(localStorage.getItem(LS_KEY) || '0');
-
-// ── Player ────────────────────────────────────────────────────────────────────
-const player = {
-  ring: 0, angle: -Math.PI / 2,
-  w: 0.9, // rad/s
-  hopQueued: false,
-  combo: 0, comboTimer: 0,
-  invincible: 0 // hitstop frames
-};
-
-// ── Game objects ──────────────────────────────────────────────────────────────
-let bridges = [], debris = [], shards = [], zaps = [], particles = [];
-let score = 0, elapsed = 0, lastTime = 0;
-let shake = { x: 0, y: 0, t: 0, strength: 0 };
-let hue = 200; // background hue
-let hitstop = 0;
-
-// ── Challenge banner ──────────────────────────────────────────────────────────
-const params = new URLSearchParams(location.search);
-const challengeScore = parseInt(params.get('score') || '0');
-
-// ── Difficulty helpers ────────────────────────────────────────────────────────
-function diff() {
-  const t = elapsed;
-  return {
-    speed:     Math.min(0.6 + t * 0.006, 1.8),
-    debrisRate: t < 10 ? 0.3 : t < 25 ? 0.55 : t < 45 ? 0.75 : 0.9,
-    bridgeRate: t < 10 ? 0.7 : t < 25 ? 1.0 : 1.3,
-    shardRate:  0.25,
-    zapRing:    t > 70,
-    doubleBridge: t > 25,
-    fakeBridge:   t > 45,
-    numRings:   t < 10 ? Math.min(2, NUM_RINGS) : NUM_RINGS
-  };
+// offscreen star field
+let starCanvas;
+function buildStars(){
+  starCanvas = document.createElement('canvas');
+  starCanvas.width = CW*DPR;
+  starCanvas.height = CH*DPR;
+  const sc = starCanvas.getContext('2d');
+  sc.setTransform(DPR,0,0,DPR,0,0);
+  for(let i=0;i<130;i++){
+    const x=Math.random()*CW, y=Math.random()*CH;
+    const r=Math.random()*1.2+0.3;
+    sc.beginPath();
+    sc.arc(x,y,r,0,Math.PI*2);
+    sc.fillStyle=`rgba(255,255,255,${Math.random()*0.7+0.2})`;
+    sc.fill();
+  }
 }
 
-// ── Angle helpers ─────────────────────────────────────────────────────────────
-const PI2 = Math.PI * 2;
-function angDiff(a, b) {
-  let d = ((b - a) % PI2 + PI2) % PI2;
-  if (d > Math.PI) d -= PI2;
-  return d;
+const COLORS=[
+  {h:0,  s:90,l:62},
+  {h:40, s:95,l:62},
+  {h:120,s:70,l:58},
+  {h:200,s:90,l:62},
+  {h:280,s:80,l:66},
+  {h:330,s:85,l:66},
+];
+function cs(ci,a=1,ld=0){
+  const c=COLORS[ci];
+  return `hsla(${c.h},${c.s}%,${c.l+ld}%,${a})`;
 }
-function angNorm(a) { return ((a % PI2) + PI2) % PI2; }
 
-// ── Spawn helpers ─────────────────────────────────────────────────────────────
-function safeAngle(ring, halfSpan) {
-  // lead angle ahead of player on same ring
-  const lead = angNorm(player.angle + player.w * 1.5);
-  for (let tries = 0; tries < 20; tries++) {
-    const a = Math.random() * PI2;
-    let ok = true;
-    if (ring === player.ring && Math.abs(angDiff(lead, a)) < halfSpan + 0.4) ok = false;
-    for (const d of debris) {
-      if (d.ring === ring && Math.abs(angDiff(d.angle, a)) < halfSpan + 0.25) { ok = false; break; }
+// game state
+let state='start';
+let score=0, best=parseInt(localStorage.getItem('ve_best')||'0');
+let lives=3, streak=0, combo=0, comboTimer=0;
+let hue=200, t=0;
+let shakeAmt=0, shakeTimer=0;
+let mergeFlash=0;
+let retryActive=false, retryTimer=0;
+
+// challenge
+const urlP=new URLSearchParams(location.search);
+const challengeScore=parseInt(urlP.get('challenge')||'0');
+
+// tiles
+let tiles=[];
+let numTiles=4, numColors=2, orbitSpeed=0.0035, bhSpeed=1.0;
+
+function makeTile(angle){
+  return {angle, color:Math.floor(Math.random()*numColors),
+    matchPulse:0, flashTimer:0, sucked:false, suckT:0,
+    flipTimer:5+Math.random()*8, flipColor:-1, trail:[]};
+}
+
+function applyDiff(){
+  if(score<8){    numTiles=4;numColors=2;orbitSpeed=0.0035;bhSpeed=1.0;}
+  else if(score<20){numTiles=5;numColors=3;orbitSpeed=0.0045;bhSpeed=1.3;}
+  else if(score<40){numTiles=6;numColors=3;orbitSpeed=0.006; bhSpeed=1.5;}
+  else if(score<65){numTiles=6;numColors=4;orbitSpeed=0.007; bhSpeed=1.8;}
+  else{             numTiles=6;numColors=4;orbitSpeed=0.008; bhSpeed=2.2;}
+}
+
+// black holes
+function makeBH(angle){
+  return {angle, mouth:0.18, lunge:false, lungeT:0, lungeCd:5+Math.random()*8};
+}
+let bh1=null, bh2=null;
+
+// particles / floats
+let particles=[], floats=[];
+
+function spawnMerge(x,y,ci){
+  for(let i=0;i<28;i++){
+    const spd=Math.random()*4.5+1.5;
+    const a=Math.random()*Math.PI*2;
+    particles.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,r:Math.random()*3.5+1.5,
+      ci,life:1,decay:Math.random()*0.04+0.025,ripple:false,dark:false});
+  }
+  particles.push({x,y,vx:0,vy:0,r:1,ci,life:1,decay:0.035,ripple:true,maxR:ORBIT_R*0.55,dark:false});
+}
+function spawnSuck(x,y){
+  for(let i=0;i<14;i++){
+    const spd=Math.random()*2+0.5;
+    const a=Math.random()*Math.PI*2;
+    particles.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,r:Math.random()*3+1,
+      ci:null,life:1,decay:0.07,ripple:false,dark:true});
+  }
+}
+function spawnFloat(x,y,text,col='#fff'){
+  floats.push({x,y,text,col,life:1,vy:-1.3});
+}
+
+function tileX(tile){return CX+Math.cos(tile.angle)*ORBIT_R;}
+function tileY(tile){return CY+Math.sin(tile.angle)*ORBIT_R;}
+function normA(a){while(a>Math.PI)a-=Math.PI*2;while(a<-Math.PI)a+=Math.PI*2;return a;}
+
+function resetGame(){
+  score=0;lives=3;streak=0;combo=0;comboTimer=0;
+  hue=200;t=0;shakeAmt=0;shakeTimer=0;mergeFlash=0;
+  tiles=[];particles=[];floats=[];
+  applyDiff();
+  for(let i=0;i<numTiles;i++){
+    tiles.push(makeTile(i*(Math.PI*2/numTiles)+Math.random()*0.1));
+  }
+  bh1=makeBH(Math.PI*0.7); bh2=null;
+  updateUI();
+}
+
+function tryMerge(){
+  if(state!=='playing')return;
+  const active=tiles.filter(t=>!t.sucked);
+  for(let i=0;i<active.length;i++){
+    const a=active[i], b=active[(i+1)%active.length];
+    if(a.color===b.color){
+      const mx=(tileX(a)+tileX(b))/2;
+      const my=(tileY(a)+tileY(b))/2;
+      const ci=a.color;
+      const i1=tiles.indexOf(a), i2=tiles.indexOf(b);
+      tiles[i1]=makeTile(a.angle+0.15); tiles[i1].color=Math.floor(Math.random()*numColors);
+      tiles[i2]=makeTile(b.angle-0.15); tiles[i2].color=Math.floor(Math.random()*numColors);
+      combo++; streak++;
+      comboTimer=3;
+      const pts=combo>=3?25:combo===2?15:10;
+      score+=pts;
+      best=Math.max(best,score);
+      localStorage.setItem('ve_best',best);
+      updateUI();
+      spawnMerge(mx,my,ci);
+      const lbl=combo>=3?`+${pts} CHAIN!`:combo===2?`+${pts} COMBO`:`+${pts}`;
+      spawnFloat(mx,my-TILE_R*1.8,lbl,combo>=2?'#ffe066':'#fff');
+      mergeFlash=1;
+      if(combo>=2)hue=(hue+40)%360;
+      applyDiff();
+      // ensure tile count
+      while(tiles.length<numTiles) tiles.push(makeTile(Math.random()*Math.PI*2));
+      return;
     }
-    for (const b of bridges) {
-      if (Math.abs(angDiff(b.angle, a)) < halfSpan + 0.3) { ok = false; break; }
-    }
-    if (ok) return a;
-  }
-  return Math.random() * PI2;
-}
-
-// ── Timers for spawning ───────────────────────────────────────────────────────
-let bridgeTimer = 0, debrisTimer = 0, shardTimer = 0, zapTimer = 0;
-
-function spawnBridge(d) {
-  const dir = Math.random() < 0.5 ? 1 : -1;
-  const ring = Math.floor(Math.random() * d.numRings);
-  const targetRing = ring + dir;
-  if (targetRing < 0 || targetRing >= d.numRings) return;
-  const a = safeAngle(ring, 0.3);
-  const fake = d.fakeBridge && Math.random() < 0.25;
-  bridges.push({ ring, targetRing, angle: a, len: fake ? 0.22 : 0.3, life: 3.5, maxLife: 3.5, fake });
-  if (d.doubleBridge && Math.random() < 0.4) {
-    const r2 = Math.floor(Math.random() * d.numRings);
-    const t2 = r2 + (Math.random() < 0.5 ? 1 : -1);
-    if (t2 >= 0 && t2 < d.numRings) {
-      const a2 = safeAngle(r2, 0.3);
-      bridges.push({ ring: r2, targetRing: t2, angle: a2, len: 0.28, life: 3.5, maxLife: 3.5, fake: false });
-    }
   }
 }
 
-function spawnDebris(d) {
-  const ring = Math.floor(Math.random() * d.numRings);
-  const a = safeAngle(ring, 0.28);
-  debris.push({ ring, angle: a, span: 0.25 + Math.random() * 0.15, grazed: false });
-}
+function updateBH(bh, dt){
+  if(!bh)return;
+  bh.mouth=Math.min(bh.mouth+bhSpeed*dt*0.013, 0.68);
 
-function spawnShard(d) {
-  const ring = Math.floor(Math.random() * Math.min(2, d.numRings));
-  const a = safeAngle(ring, 0.15);
-  shards.push({ ring, angle: a, life: 5.0, spin: 0 });
-}
-
-function spawnZap(d) {
-  if (!d.zapRing) return;
-  const ring = Math.floor(Math.random() * d.numRings);
-  const a = safeAngle(ring, 0.35);
-  zaps.push({ ring, angle: a, span: 0.35, life: 2.5, maxLife: 2.5, phase: 0 });
-}
-
-// ── Particle emitters ─────────────────────────────────────────────────────────
-function emitBurst(x, y, n, hue, speed, life) {
-  for (let i = 0; i < n; i++) {
-    const a = Math.random() * PI2;
-    const v = speed * (0.5 + Math.random());
-    particles.push({ x, y, vx: Math.cos(a)*v, vy: Math.sin(a)*v, life, maxLife: life, hue, size: 2 + Math.random()*3 });
+  // lunge
+  if(score>=20){
+    bh.lungeCd-=dt;
+    if(bh.lungeCd<=0 && !bh.lunge){ bh.lunge=true; bh.lungeT=0; bh.lungeCd=5+Math.random()*8; }
   }
-}
-function emitStreaks(x, y, n) {
-  for (let i = 0; i < n; i++) {
-    const a = Math.random() * PI2;
-    particles.push({ x, y, vx: Math.cos(a)*60, vy: Math.sin(a)*60, life: 0.35, maxLife: 0.35, hue: 180, size: 1.5, streak: true });
-  }
-}
-
-function polarXY(ring, angle) {
-  return { x: cx + R[ring] * Math.cos(angle), y: cy + R[ring] * Math.sin(angle) };
-}
-
-// ── Input ─────────────────────────────────────────────────────────────────────
-function onInput() {
-  if (state === 'start' || state === 'gameover') { startGame(); return; }
-  if (state === 'playing') player.hopQueued = true;
-}
-canvas.addEventListener('pointerdown', e => { e.preventDefault(); onInput(); });
-document.addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); onInput(); } });
-
-// ── Game init ─────────────────────────────────────────────────────────────────
-function startGame() {
-  state = 'playing';
-  rebuildRings();
-  player.ring = 0; player.angle = -Math.PI / 2;
-  player.hopQueued = false; player.combo = 0; player.comboTimer = 0; player.invincible = 0;
-  bridges = []; debris = []; shards = []; zaps = []; particles = [];
-  score = 0; elapsed = 0;
-  bridgeTimer = 1.5; debrisTimer = 2.0; shardTimer = 3.0; zapTimer = 10.0;
-  shake.t = 0;
-  hitstop = 0;
-  player.w = 0.9;
-}
-
-// ── Death ─────────────────────────────────────────────────────────────────────
-function die() {
-  if (player.invincible > 0) return;
-  const p = polarXY(player.ring, player.angle);
-  emitBurst(p.x, p.y, 40, 30, 200, 1.2);
-  shake.t = 0.6; shake.strength = 14;
-  hitstop = 80;
-  state = 'gameover';
-  if (score > best) { best = score; localStorage.setItem(LS_KEY, best); }
-}
-
-// ── Update ────────────────────────────────────────────────────────────────────
-function update(dt) {
-  if (hitstop > 0) { hitstop -= dt * 1000; return; }
-
-  hue = (hue + dt * 8) % 360;
-  elapsed += dt;
-  score += dt; // +1/s
-  const d = diff();
-  player.w = d.speed;
-
-  // Move player
-  player.angle = angNorm(player.angle + player.w * dt);
-
-  // Combo decay
-  if (player.combo > 0) {
-    player.comboTimer -= dt;
-    if (player.comboTimer <= 0) player.combo = 0;
+  if(bh.lunge){
+    bh.lungeT+=dt;
+    if(bh.lungeT>0.5) bh.mouth=Math.min(bh.mouth+dt*0.3,0.68);
+    if(bh.lungeT>1.1) bh.lunge=false;
   }
 
-  // Process hop
-  if (player.hopQueued) {
-    player.hopQueued = false;
-    let hopped = false;
-    for (let i = bridges.length - 1; i >= 0; i--) {
-      const b = bridges[i];
-      if (b.ring !== player.ring) continue;
-      const ad = Math.abs(angDiff(player.angle, b.angle));
-      if (ad < b.len + 0.12) {
-        // Hop!
-        const p = polarXY(player.ring, player.angle);
-        emitBurst(p.x, p.y, 10, (hue + 60) % 360, 80, 0.5);
-        player.ring = b.targetRing;
-        score += 2;
-        // Perfect hop bonus
-        const perfect = ad < b.len * 0.3;
-        if (perfect) {
-          player.combo++;
-          player.comboTimer = 3.0;
-          score += player.combo * 3;
-          shake.t = 0.08; shake.strength = 3;
-          emitBurst(p.x, p.y, 6, 60, 50, 0.3);
+  tiles.forEach((tile,idx)=>{
+    if(tile.sucked)return;
+    const diff=Math.abs(normA(tile.angle-bh.angle));
+    if(diff<bh.mouth+0.04){
+      tile.sucked=true; tile.suckT=0;
+      spawnSuck(tileX(tile),tileY(tile));
+      const tidx=idx;
+      setTimeout(()=>{
+        if(tiles[tidx]){
+          tiles[tidx]=makeTile(tile.angle+Math.PI+0.3+(Math.random()-0.5)*0.4);
+          tiles[tidx].color=Math.floor(Math.random()*numColors);
         }
-        bridges.splice(i, 1);
-        hopped = true;
-        break;
+        lives=Math.max(0,lives-1);
+        doShake(5,0.28);
+        updateUI();
+        if(lives<=0)endGame();
+      },420);
+    } else if(diff<bh.mouth+0.28){
+      tile.flashTimer=0.32;
+    }
+  });
+}
+
+function update(dt){
+  t+=dt;
+  hue=(hue+0.025)%360;
+  if(shakeTimer>0){shakeTimer-=dt;if(shakeTimer<=0)shakeAmt=0;}
+  if(comboTimer>0){comboTimer-=dt;if(comboTimer<=0){combo=0;updateStreakHud();}}
+  applyDiff();
+
+  // tile count sync
+  while(tiles.length<numTiles) tiles.push(makeTile(Math.random()*Math.PI*2));
+
+  // orbit + flip
+  tiles.forEach((tile,i)=>{
+    if(tile.sucked){tile.suckT+=dt*2.8;return;}
+    tile.angle+=orbitSpeed;
+    tile.trail.unshift({angle:tile.angle,life:1});
+    if(tile.trail.length>5)tile.trail.pop();
+    tile.trail.forEach(pt=>pt.life-=0.2);
+
+    if(tile.flashTimer>0)tile.flashTimer-=dt;
+
+    if(score>=65){
+      tile.flipTimer-=dt;
+      if(tile.flipTimer<=0){
+        if(tile.flipColor>=0){tile.color=tile.flipColor;tile.flipColor=-1;tile.flipTimer=5+Math.random()*9;}
+        else{tile.flipTimer=0.45;tile.flipColor=Math.floor(Math.random()*numColors);}
       }
     }
-    if (!hopped) { player.combo = 0; }
-  }
-
-  // Spawn timers
-  bridgeTimer -= dt;
-  if (bridgeTimer <= 0) {
-    spawnBridge(d);
-    bridgeTimer = (d.numRings === 1 ? 2.5 : 1.8) / d.bridgeRate;
-  }
-  debrisTimer -= dt;
-  if (debrisTimer <= 0) {
-    spawnDebris(d);
-    debrisTimer = 2.0 / d.debrisRate;
-  }
-  shardTimer -= dt;
-  if (shardTimer <= 0) {
-    spawnShard(d);
-    shardTimer = 4.0 / d.shardRate;
-  }
-  if (d.zapRing) {
-    zapTimer -= dt;
-    if (zapTimer <= 0) {
-      spawnZap(d);
-      zapTimer = 3.0;
-    }
-  }
-
-  // Update bridges (they rotate with the ring aesthetic)
-  bridges = bridges.filter(b => {
-    b.life -= dt;
-    return b.life > 0;
   });
 
-  // Update zaps
-  zaps = zaps.filter(z => {
-    z.life -= dt;
-    z.phase += dt * 20;
-    return z.life > 0;
+  // match pulse
+  const active=tiles.filter(ti=>!ti.sucked);
+  active.forEach(ti=>{ti.matchPulse=0;});
+  for(let i=0;i<active.length;i++){
+    const a=active[i], b=active[(i+1)%active.length];
+    if(a.color===b.color){a.matchPulse=1;b.matchPulse=1;}
+  }
+
+  updateBH(bh1,dt);
+  if(score>=40&&!bh2) bh2=makeBH(bh1.angle+Math.PI);
+  if(bh2) updateBH(bh2,dt);
+
+  // particles
+  particles.forEach(p=>{
+    if(!p.ripple){p.x+=p.vx;p.y+=p.vy;p.vx*=0.91;p.vy*=0.91;}
+    p.life-=p.decay;
   });
+  particles=particles.filter(p=>p.life>0);
+  floats.forEach(f=>{f.y+=f.vy;f.life-=0.017;});
+  floats=floats.filter(f=>f.life>0);
+  mergeFlash=Math.max(0,mergeFlash-dt*3.5);
 
-  // Collision: debris
-  for (const d2 of debris) {
-    if (d2.ring !== player.ring) continue;
-    const ad = Math.abs(angDiff(player.angle, d2.angle));
-    if (ad < d2.span * 0.7) { die(); return; }
-    // Graze
-    if (!d2.grazed && ad < d2.span + 0.18) {
-      d2.grazed = true;
-      const p = polarXY(player.ring, player.angle);
-      emitStreaks(p.x, p.y, 6);
-      score += 1;
+  // retry countdown (draws based on retryTimer)
+  if(state==='gameover'&&retryTimer>0) retryTimer=Math.max(0,retryTimer-dt);
+}
+
+function draw(){
+  ctx.clearRect(0,0,CW,CH);
+  let sx=0,sy=0;
+  if(shakeAmt>0){sx=(Math.random()-0.5)*shakeAmt*2;sy=(Math.random()-0.5)*shakeAmt*2;ctx.save();ctx.translate(sx,sy);}
+
+  // bg
+  const bg=ctx.createRadialGradient(CX,CY,0,CX,CY,Math.max(CW,CH)*0.75);
+  bg.addColorStop(0,`hsl(${(hue+160)%360},25%,8%)`);
+  bg.addColorStop(1,'#03030e');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,CW,CH);
+  if(starCanvas) ctx.drawImage(starCanvas,0,0,CW,CH);
+
+  if(mergeFlash>0){ctx.fillStyle=`rgba(255,255,255,${mergeFlash*0.07})`;ctx.fillRect(0,0,CW,CH);}
+
+  // orbit ring
+  ctx.beginPath();ctx.arc(CX,CY,ORBIT_R,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,0.07)';ctx.lineWidth=1.5;ctx.stroke();
+
+  // particles
+  particles.forEach(p=>{
+    if(p.ripple){
+      const pr=p.life*p.maxR;
+      ctx.beginPath();ctx.arc(p.x,p.y,pr,0,Math.PI*2);
+      ctx.strokeStyle=p.ci!==null?cs(p.ci,p.life*0.55):`rgba(255,255,255,${p.life*0.4})`;
+      ctx.lineWidth=2;ctx.stroke();return;
     }
-  }
-
-  // Collision: zaps
-  for (const z of zaps) {
-    if (z.ring !== player.ring) continue;
-    const ad = Math.abs(angDiff(player.angle, z.angle));
-    if (ad < z.span * 0.6) { die(); return; }
-  }
-
-  // Collision: shards
-  shards = shards.filter(s => {
-    if (s.ring === player.ring) {
-      const ad = Math.abs(angDiff(player.angle, s.angle));
-      if (ad < 0.18) {
-        const p = polarXY(player.ring, player.angle);
-        emitBurst(p.x, p.y, 8, 55, 60, 0.5);
-        score += 5;
-        shake.t = 0.05; shake.strength = 2;
-        return false;
-      }
-    }
-    s.life -= dt;
-    s.spin += dt * 2;
-    return s.life > 0;
-  });
-
-  // Remove expired debris
-  debris = debris.filter(d2 => {
-    // debris stays until player passes it
-    const ad = angDiff(player.angle, d2.angle);
-    return ad > -0.5; // remove once well behind player
-  });
-
-  // Particles
-  particles = particles.filter(p => {
-    p.life -= dt;
-    p.x += p.vx * dt;
-    p.y += p.vy * dt;
-    p.vx *= 0.92; p.vy *= 0.92;
-    return p.life > 0;
-  });
-
-  // Screen shake decay
-  if (shake.t > 0) {
-    shake.t -= dt;
-    shake.x = (Math.random() * 2 - 1) * shake.strength * (shake.t > 0 ? 1 : 0);
-    shake.y = (Math.random() * 2 - 1) * shake.strength * (shake.t > 0 ? 1 : 0);
-  } else { shake.x = 0; shake.y = 0; }
-}
-
-// ── Draw helpers ──────────────────────────────────────────────────────────────
-function drawRing(i, alpha) {
-  const ringHue = (hue + i * 40) % 360;
-  ctx.beginPath();
-  ctx.arc(cx, cy, R[i], 0, PI2);
-  ctx.strokeStyle = `hsla(${ringHue},60%,55%,${alpha})`;
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-}
-
-function drawBridge(b) {
-  const life = b.life / b.maxLife;
-  const alpha = Math.min(life * 3, 1);
-  const r1 = R[b.ring], r2 = R[b.targetRing];
-  const a = b.angle;
-  const x1 = cx + r1 * Math.cos(a), y1 = cy + r1 * Math.sin(a);
-  const x2 = cx + r2 * Math.cos(a), y2 = cy + r2 * Math.sin(a);
-  // Draw radial bridge line
-  const grad = ctx.createLinearGradient(x1, y1, x2, y2);
-  grad.addColorStop(0, `hsla(60,100%,70%,${alpha})`);
-  grad.addColorStop(1, `hsla(200,100%,70%,${alpha})`);
-  ctx.beginPath();
-  ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-  ctx.strokeStyle = grad;
-  ctx.lineWidth = b.fake ? 1.5 : 3;
-  ctx.setLineDash(b.fake ? [4, 4] : []);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  // Arc window indicator on player ring
-  ctx.beginPath();
-  ctx.arc(cx, cy, R[b.ring], a - b.len, a + b.len);
-  ctx.strokeStyle = `hsla(60,100%,65%,${alpha * 0.5})`;
-  ctx.lineWidth = b.fake ? 1 : 4;
-  ctx.stroke();
-  // Pulsing dot at center
-  const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.008);
-  ctx.beginPath();
-  ctx.arc(cx + R[b.ring]*Math.cos(a), cy + R[b.ring]*Math.sin(a), 5 + pulse*3, 0, PI2);
-  ctx.fillStyle = `hsla(60,100%,75%,${alpha * 0.9})`;
-  ctx.fill();
-}
-
-function drawDebris(d2) {
-  const r = R[d2.ring];
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, d2.angle - d2.span, d2.angle + d2.span);
-  ctx.strokeStyle = '#00e5ff';
-  ctx.lineWidth = 7;
-  ctx.stroke();
-  // Dark outline for contrast
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, d2.angle - d2.span, d2.angle + d2.span);
-  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-}
-
-function drawShard(s) {
-  const r = R[s.ring];
-  const x = cx + r * Math.cos(s.angle), y = cy + r * Math.sin(s.angle);
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(s.spin);
-  const sz = 6;
-  ctx.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const a = (i / 6) * PI2;
-    const len = i % 2 === 0 ? sz : sz * 0.45;
-    const px = Math.cos(a) * len, py = Math.sin(a) * len;
-    i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-  }
-  ctx.closePath();
-  ctx.fillStyle = `hsl(55,100%,70%)`;
-  ctx.fill();
-  ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  ctx.restore();
-}
-
-function drawZap(z) {
-  const r = R[z.ring];
-  const life = z.life / z.maxLife;
-  const alpha = Math.min(life * 2, 1);
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, z.angle - z.span, z.angle + z.span);
-  ctx.strokeStyle = `hsla(0,100%,60%,${alpha})`;
-  ctx.lineWidth = 5 + Math.sin(z.phase) * 3;
-  ctx.stroke();
-  // Lightning effect
-  const steps = 8;
-  for (let i = 0; i < steps; i++) {
-    const a = z.angle - z.span + (z.span * 2 / steps) * i + Math.sin(z.phase + i) * 0.04;
-    const jitter = (Math.random() * 2 - 1) * 6;
-    const rj = r + jitter;
-    if (i === 0) {
-      ctx.beginPath();
-      ctx.moveTo(cx + rj * Math.cos(a), cy + rj * Math.sin(a));
-    } else {
-      ctx.lineTo(cx + rj * Math.cos(a), cy + rj * Math.sin(a));
-    }
-  }
-  ctx.strokeStyle = `hsla(15,100%,80%,${alpha * 0.7})`;
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-}
-
-function drawPlayer() {
-  const r = R[player.ring];
-  const x = cx + r * Math.cos(player.angle);
-  const y = cy + r * Math.sin(player.angle);
-  // Glow
-  const g = ctx.createRadialGradient(x, y, 0, x, y, 18);
-  g.addColorStop(0, 'rgba(255,255,255,0.35)');
-  g.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.beginPath(); ctx.arc(x, y, 18, 0, PI2);
-  ctx.fillStyle = g; ctx.fill();
-  // Ship triangle pointing direction of travel
-  const dir = player.angle + Math.PI / 2; // tangent
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(dir);
-  ctx.beginPath();
-  ctx.moveTo(0, -9);
-  ctx.lineTo(6, 7);
-  ctx.lineTo(-6, 7);
-  ctx.closePath();
-  ctx.fillStyle = '#ffffff';
-  ctx.fill();
-  ctx.strokeStyle = `hsl(${hue},80%,65%)`;
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.restore();
-  // Engine trail
-  emitBurst(x, y, 1, hue, 15, 0.25);
-}
-
-function drawCore() {
-  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 28);
-  g.addColorStop(0, `hsl(${hue},100%,80%)`);
-  g.addColorStop(0.5, `hsl(${(hue+40)%360},80%,50%)`);
-  g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.beginPath(); ctx.arc(cx, cy, 28, 0, PI2);
-  ctx.fillStyle = g; ctx.fill();
-}
-
-function drawParticles() {
-  for (const p of particles) {
-    const a = p.life / p.maxLife;
-    if (p.streak) {
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-      ctx.lineTo(p.x - p.vx * 0.04, p.y - p.vy * 0.04);
-      ctx.strokeStyle = `hsla(${p.hue},100%,70%,${a})`;
-      ctx.lineWidth = p.size;
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size * a, 0, PI2);
-      ctx.fillStyle = `hsla(${p.hue},90%,65%,${a})`;
-      ctx.fill();
-    }
-  }
-}
-
-function drawHUD() {
-  const sc = Math.floor(score);
-  const combo = player.combo;
-  // Score
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 28px system-ui';
-  ctx.textAlign = 'center';
-  ctx.fillText(sc, cx, 46);
-  // Best
-  ctx.fillStyle = 'rgba(255,255,255,0.45)';
-  ctx.font = '13px system-ui';
-  ctx.fillText(`Best: ${best}`, cx, 64);
-  // Combo
-  if (combo > 1) {
-    ctx.fillStyle = `hsl(55,100%,65%)`;
-    ctx.font = 'bold 18px system-ui';
-    ctx.fillText(`×${combo} COMBO`, cx, 88);
-  }
-  // Challenge banner
-  if (challengeScore > 0 && state === 'playing') {
-    ctx.fillStyle = 'rgba(255,200,0,0.85)';
-    ctx.font = 'bold 14px system-ui';
-    ctx.fillText(`Beat ${challengeScore} to win!`, cx, 110);
-  }
-}
-
-function drawStart() {
-  ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  ctx.fillRect(0, 0, W, H);
-  ctx.textAlign = 'center';
-  ctx.fillStyle = `hsl(${hue},80%,70%)`;
-  ctx.font = 'bold 42px system-ui';
-  ctx.fillText('ORBIT SHIFT', cx, cy - 60);
-  ctx.fillStyle = '#fff';
-  ctx.font = '18px system-ui';
-  ctx.fillText('Hop between rings to survive', cx, cy - 20);
-  ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  ctx.font = '16px system-ui';
-  ctx.fillText('Tap or press Space to start', cx, cy + 20);
-  if (best > 0) {
-    ctx.fillStyle = 'rgba(255,200,60,0.8)';
-    ctx.font = '14px system-ui';
-    ctx.fillText(`Personal Best: ${best}`, cx, cy + 50);
-  }
-}
-
-function drawGameOver() {
-  ctx.fillStyle = 'rgba(0,0,0,0.65)';
-  ctx.fillRect(0, 0, W, H);
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#ff5555';
-  ctx.font = 'bold 36px system-ui';
-  ctx.fillText('GAME OVER', cx, cy - 70);
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 32px system-ui';
-  ctx.fillText(Math.floor(score), cx, cy - 24);
-  ctx.font = '16px system-ui';
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.fillText('Score', cx, cy - 6);
-  if (score >= best && score > 0) {
-    ctx.fillStyle = `hsl(55,100%,65%)`;
-    ctx.font = 'bold 15px system-ui';
-    ctx.fillText('NEW BEST!', cx, cy + 18);
-  } else {
-    ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.font = '14px system-ui';
-    ctx.fillText(`Best: ${best}`, cx, cy + 18);
-  }
-  ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.font = '17px system-ui';
-  ctx.fillText('Tap or Space to retry', cx, cy + 58);
-  // Share button hint
-  if (navigator.share || navigator.clipboard) {
-    ctx.fillStyle = 'rgba(100,200,255,0.7)';
-    ctx.font = '13px system-ui';
-    ctx.fillText('Long-press to share score', cx, cy + 82);
-  }
-}
-
-// ── Web Share ─────────────────────────────────────────────────────────────────
-let longPressTimer = null;
-canvas.addEventListener('pointerdown', () => {
-  if (state !== 'gameover') return;
-  longPressTimer = setTimeout(() => { shareScore(); }, 600);
-});
-canvas.addEventListener('pointerup', () => clearTimeout(longPressTimer));
-canvas.addEventListener('pointercancel', () => clearTimeout(longPressTimer));
-
-function shareScore() {
-  const url = `${location.origin}${location.pathname}?score=${Math.floor(score)}`;
-  const text = `I scored ${Math.floor(score)} in Orbit Shift! Can you beat me?`;
-  if (navigator.share) {
-    navigator.share({ title: 'Orbit Shift', text, url }).catch(() => {});
-  } else if (navigator.clipboard) {
-    navigator.clipboard.writeText(url).then(() => alert('Link copied!')).catch(() => {});
-  }
-}
-
-// ── Nebula background ─────────────────────────────────────────────────────────
-function drawBackground() {
-  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, Math.max(W, H) * 0.8);
-  g.addColorStop(0, `hsl(${(hue+180)%360},30%,12%)`);
-  g.addColorStop(0.5, `hsl(${hue},20%,7%)`);
-  g.addColorStop(1, '#050508');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
-  // subtle star field
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  // pre-seeded stars (deterministic, don't recompute each frame)
-}
-
-// Init stars
-const STARS = [];
-(function initStars() {
-  for (let i = 0; i < 60; i++) {
-    STARS.push({ x: Math.random(), y: Math.random(), r: Math.random() * 1.2 + 0.3 });
-  }
-})();
-
-function drawStars() {
-  for (const s of STARS) {
-    ctx.beginPath();
-    ctx.arc(s.x * W, s.y * H, s.r, 0, PI2);
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.beginPath();ctx.arc(p.x,p.y,Math.max(0.1,p.r*p.life),0,Math.PI*2);
+    ctx.fillStyle=p.dark?`rgba(10,0,20,${p.life*0.8})`:p.ci!==null?cs(p.ci,p.life):'rgba(255,255,255,0.5)';
     ctx.fill();
+  });
+
+  // black holes
+  function drawBH(bh){
+    if(!bh)return;
+    const bx=CX+Math.cos(bh.angle)*ORBIT_R;
+    const by=CY+Math.sin(bh.angle)*ORBIT_R;
+    // danger arc
+    ctx.save();
+    ctx.beginPath();ctx.arc(CX,CY,ORBIT_R,bh.angle-bh.mouth,bh.angle+bh.mouth);
+    ctx.strokeStyle=`rgba(220,0,70,${0.35+0.2*Math.sin(t*4)})`;
+    ctx.lineWidth=TILE_R*0.65;ctx.stroke();
+    ctx.restore();
+    // void circle
+    ctx.save();ctx.shadowBlur=22;ctx.shadowColor='#ff0055';
+    ctx.beginPath();ctx.arc(bx,by,TILE_R*1.1,0,Math.PI*2);ctx.fillStyle='#000';ctx.fill();
+    ctx.restore();
+    // jaw glow
+    ctx.save();ctx.shadowBlur=14;ctx.shadowColor='#cc0044';
+    [-1,1].forEach(s=>{
+      ctx.beginPath();ctx.arc(CX,CY,ORBIT_R,bh.angle+s*(bh.mouth-0.1),bh.angle+s*bh.mouth);
+      ctx.strokeStyle='rgba(255,30,80,0.85)';ctx.lineWidth=3;ctx.stroke();
+    });
+    ctx.restore();
   }
-}
+  drawBH(bh1); if(bh2)drawBH(bh2);
 
-// ── Main loop ─────────────────────────────────────────────────────────────────
-function draw() {
-  ctx.save();
-  if (shake.t > 0) ctx.translate(shake.x, shake.y);
-
-  drawBackground();
-  drawStars();
-  drawCore();
-
-  const d = diff();
-  for (let i = 0; i < (state === 'playing' ? d.numRings : NUM_RINGS); i++) {
-    drawRing(i, state === 'playing' ? 0.45 : 0.25);
-  }
-
-  if (state === 'playing') {
-    for (const b of bridges) drawBridge(b);
-    for (const d2 of debris) drawDebris(d2);
-    for (const s of shards) drawShard(s);
-    for (const z of zaps) drawZap(z);
-    drawParticles();
-    drawPlayer();
-    drawHUD();
-  } else if (state === 'start') {
-    drawStart();
-  } else if (state === 'gameover') {
-    drawParticles();
-    drawGameOver();
-  }
-
-  ctx.restore();
-}
-
-function loop(ts) {
-  requestAnimationFrame(loop);
-  const dt = Math.min((ts - lastTime) / 1000, 0.05);
-  lastTime = ts;
-
-  if (state === 'playing' || state === 'gameover') {
-    // Always update particles/hue even on gameover
-    hue = (hue + dt * 8) % 360;
-    if (state === 'playing') update(dt);
-    else {
-      particles = particles.filter(p => {
-        p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt;
-        p.vx *= 0.92; p.vy *= 0.92; return p.life > 0;
+  // tile trails (combo)
+  if(combo>=2){
+    tiles.forEach(tile=>{
+      if(tile.sucked)return;
+      tile.trail.forEach(pt=>{
+        const tx=CX+Math.cos(pt.angle)*ORBIT_R, ty=CY+Math.sin(pt.angle)*ORBIT_R;
+        ctx.beginPath();ctx.arc(tx,ty,TILE_R*0.28*pt.life,0,Math.PI*2);
+        ctx.fillStyle=cs(tile.color,pt.life*0.35);ctx.fill();
       });
-      if (shake.t > 0) { shake.t -= dt; shake.x = (Math.random()*2-1)*shake.strength*(shake.t>0?1:0); shake.y = (Math.random()*2-1)*shake.strength*(shake.t>0?1:0); }
-      else { shake.x = 0; shake.y = 0; }
-    }
-  } else {
-    hue = (hue + dt * 8) % 360;
+    });
   }
 
-  draw();
+  // match dashed arcs
+  const actv=tiles.filter(ti=>!ti.sucked);
+  const drawn=new Set();
+  actv.forEach((tile,i)=>{
+    const nxt=actv[(i+1)%actv.length];
+    if(tile.color===nxt.color&&!drawn.has(i)){
+      drawn.add(i);
+      ctx.save();ctx.setLineDash([6,6]);
+      ctx.beginPath();ctx.arc(CX,CY,ORBIT_R,tile.angle,nxt.angle);
+      ctx.strokeStyle=cs(tile.color,0.55+0.3*Math.sin(t*7));ctx.lineWidth=2;ctx.stroke();
+      ctx.setLineDash([]);ctx.restore();
+    }
+  });
+
+  // tiles
+  tiles.forEach((tile,i)=>{
+    if(tile.sucked){
+      if(tile.suckT<1){
+        const bref=bh1;
+        const bx=CX+Math.cos(bref.angle)*ORBIT_R, by=CY+Math.sin(bref.angle)*ORBIT_R;
+        const ox=tileX(tile), oy=tileY(tile);
+        const st=tile.suckT;
+        const sx2=ox+(bx-ox)*st, sy2=oy+(by-oy)*st;
+        ctx.save();ctx.globalAlpha=1-st;ctx.translate(sx2,sy2);ctx.rotate(st*Math.PI*3);
+        ctx.beginPath();ctx.arc(0,0,Math.max(0.1,TILE_R*(1-st*0.85)),0,Math.PI*2);
+        ctx.fillStyle=cs(tile.color);ctx.fill();ctx.restore();
+      }
+      return;
+    }
+    const tx=tileX(tile), ty=tileY(tile);
+    const isFlip=tile.flipColor>=0;
+    const fp=tile.flashTimer>0?(tile.flashTimer/0.32):0;
+    ctx.save();ctx.translate(tx,ty);
+    if(tile.matchPulse>0){
+      ctx.shadowBlur=TILE_R*2.8+Math.sin(t*8)*TILE_R*0.5;
+      ctx.shadowColor=cs(tile.color,1);
+    } else if(fp>0){
+      ctx.shadowBlur=TILE_R*2;ctx.shadowColor=`rgba(255,50,50,${fp})`;
+    } else {
+      ctx.shadowBlur=7+Math.sin(t*2+i)*3.5;ctx.shadowColor=cs(tile.color,0.55);
+    }
+    const scale=isFlip?0.88:1;
+    ctx.beginPath();ctx.arc(0,0,TILE_R*scale*(fp>0?1.1:1),0,Math.PI*2);
+    ctx.fillStyle=isFlip?cs(tile.flipColor,0.6+0.3*Math.sin(t*10)):cs(tile.color);
+    ctx.fill();
+    if(tile.matchPulse>0){
+      ctx.beginPath();ctx.arc(0,0,TILE_R*1.38+Math.sin(t*8)*2,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(255,255,255,${0.65+Math.sin(t*8)*0.3})`;ctx.lineWidth=2;ctx.stroke();
+    }
+    if(isFlip){
+      ctx.beginPath();ctx.arc(0,0,TILE_R*0.42,0,Math.PI*2);
+      ctx.fillStyle=cs(tile.flipColor,0.9);ctx.fill();
+    }
+    ctx.restore();
+  });
+
+  // central star
+  const sp=STAR_R*(1+0.13*Math.sin(t*1.4));
+  ctx.save();ctx.shadowBlur=28+10*Math.sin(t*1.4);ctx.shadowColor=`hsl(${hue},100%,70%)`;
+  ctx.beginPath();ctx.arc(CX,CY,sp,0,Math.PI*2);
+  const sg=ctx.createRadialGradient(CX,CY,0,CX,CY,sp*2.5);
+  sg.addColorStop(0,`hsl(${hue},100%,92%)`);
+  sg.addColorStop(0.45,`hsl(${hue},90%,65%)`);
+  sg.addColorStop(1,`hsla(${hue},80%,50%,0)`);
+  ctx.fillStyle=sg;ctx.fill();ctx.restore();
+
+  // score floats
+  floats.forEach(f=>{
+    ctx.save();ctx.globalAlpha=f.life;
+    ctx.font=`bold 15px system-ui`;ctx.fillStyle=f.col;
+    ctx.shadowBlur=8;ctx.shadowColor=f.col;ctx.textAlign='center';
+    ctx.fillText(f.text,f.x,f.y);ctx.restore();
+  });
+
+  // challenge ghost in HUD
+  if(state==='playing'&&challengeScore>0&&score<challengeScore){
+    ctx.save();ctx.font='bold 11px system-ui';ctx.fillStyle='rgba(255,224,102,0.65)';
+    ctx.textAlign='right';ctx.fillText('Beating: '+challengeScore,CW-18,CH-18);ctx.restore();
+  }
+
+  if(shakeAmt>0)ctx.restore();
 }
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
-resize();
-requestAnimationFrame(ts => { lastTime = ts; requestAnimationFrame(loop); });
+// UI helpers
+function updateUI(){
+  document.getElementById('score-pill').textContent=score;
+  ['h1','h2','h3'].forEach((id,i)=>document.getElementById(id).style.opacity=i<lives?'1':'0.2');
+  updateStreakHud();
+}
+function updateStreakHud(){
+  document.getElementById('streak-hud').textContent=streak>2?`STREAK ×${Math.min(combo,5)}`:'';
+}
+function doShake(a,d){shakeAmt=a;shakeTimer=d;}
 
+// overlay elements
+const overlay=document.getElementById('overlay');
+const ovTitle=document.getElementById('ov-title');
+const ovSub=document.getElementById('ov-sub');
+const ovScore=document.getElementById('ov-score');
+const ovBest=document.getElementById('ov-best-line');
+const ovNewBest=document.getElementById('ov-newbest');
+const btnRetry=document.getElementById('btn-retry');
+const btnShare=document.getElementById('btn-share');
+
+function showStart(){
+  state='start';
+  overlay.classList.remove('hidden');
+  ovTitle.style.display='';ovSub.style.display='';
+  ovScore.style.display='none';ovBest.style.display='none';ovNewBest.style.display='none';
+  btnShare.style.display='none';
+  btnRetry.textContent='TAP TO START';btnRetry.disabled=false;
+}
+
+function showGameOver(){
+  overlay.classList.remove('hidden');
+  ovTitle.style.display='none';ovSub.style.display='none';
+  ovScore.style.display='';ovScore.textContent=score;
+  ovBest.style.display='';
+  const nb=score>0&&score>=best;
+  if(nb){
+    ovNewBest.style.display='';ovNewBest.textContent='★ NEW BEST! ★';
+    const prev=parseInt(localStorage.getItem('ve_best_prev')||'0');
+    ovBest.textContent='Previous best: '+prev;
+    localStorage.setItem('ve_best_prev',best);
+  } else {
+    ovNewBest.style.display='none';ovBest.textContent='Best: '+best;
+  }
+  btnShare.style.display='';
+  btnRetry.textContent='RETRY (3)';btnRetry.disabled=true;
+  retryActive=false;retryTimer=3;
+  let cd=3;
+  const iv=setInterval(()=>{
+    cd--;
+    if(cd<=0){clearInterval(iv);btnRetry.textContent='RETRY';btnRetry.disabled=false;retryActive=true;}
+    else btnRetry.textContent='RETRY ('+cd+')';
+  },1000);
+}
+
+function startGame(){
+  state='playing';
+  overlay.classList.add('hidden');
+  resetGame();
+  if(challengeScore>0){
+    const cb=document.getElementById('challenge-banner');
+    cb.style.display='block';cb.textContent='🎯 Beat: '+challengeScore;
+  }
+}
+
+function endGame(){
+  state='gameover';
+  best=Math.max(best,score);
+  localStorage.setItem('ve_best',best);
+  doShake(7,0.4);
+  setTimeout(showGameOver,450);
+}
+
+function doShare(){
+  const url=location.origin+location.pathname+'?challenge='+score;
+  const txt='I merged '+score+' tiles before the black hole got me 🌀 Can you beat it?';
+  if(navigator.share) navigator.share({title:'Void Eject',text:txt,url}).catch(()=>{});
+  else navigator.clipboard.writeText(url+' — '+txt).then(()=>alert('Link copied!')).catch(()=>{});
+}
+
+function handleInput(){
+  if(state==='start'){startGame();return;}
+  if(state==='gameover'&&retryActive){startGame();return;}
+  if(state==='playing') tryMerge();
+}
+
+canvas.addEventListener('pointerdown',e=>{e.preventDefault();handleInput();},{passive:false});
+document.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){e.preventDefault();handleInput();}});
+btnRetry.addEventListener('click',()=>{if(!btnRetry.disabled)handleInput();});
+btnShare.addEventListener('click',doShare);
+
+let last=0;
+function loop(ts){
+  const dt=Math.min((ts-last)/1000,0.05);last=ts;
+  if(state==='playing')update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize',resize);
+resize();
+showStart();
+requestAnimationFrame(loop);
 })();
 </script>
 </body>
