@@ -3,575 +3,514 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Ring Breach — Thread the Gap</title>
-<meta name="description" content="Tap to fling your star through spinning ring gaps. Time the arc. Thread the breach. Free browser game.">
-<meta name="keywords" content="hyper casual game, ring breach, timing game, tap game, free browser game">
-<meta property="og:title" content="Ring Breach — Thread the Gap">
-<meta property="og:description" content="Fling your star through desyncing ring gaps. One tap. No second chances.">
+<title>Orbit Shift - Free HTML5 Game</title>
+<meta name="description" content="Play Orbit Shift - Tap to jump your star between galaxy rings as the color palette cycles and mismatched rings destroy you.">
+<meta property="og:title" content="Orbit Shift - Free HTML5 Game">
+<meta property="og:description" content="Thread the gap before the rings desync. Tap to fling your star through spinning ring gaps in this hyper-casual arcade game.">
 <meta property="og:type" content="website">
-<meta name="twitter:card" content="summary">
-<meta name="theme-color" content="#050510">
+<meta property="og:url" content="https://balinti.github.io/orbit-shift/">
+<meta name="theme-color" content="#0a0a1a">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4099346100621490" crossorigin="anonymous"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;background:#050510;display:flex;align-items:center;justify-content:center;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none}
+html,body{width:100%;height:100%;background:#000;display:flex;justify-content:center;align-items:center;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
 #wrap{position:relative;width:min(420px,100vw);height:min(750px,100vh)}
-canvas{display:block;width:100%;height:100%}
-#ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(5,5,20,0.92);backdrop-filter:blur(10px)}
-#ov.hide{display:none}
-#ovTitle{font-size:40px;font-weight:900;color:#fff;letter-spacing:3px;text-shadow:0 0 40px rgba(80,180,255,0.9)}
-#ovSub{font-size:13px;color:rgba(255,255,255,0.45);text-align:center;line-height:1.8;max-width:260px}
-#ovScore{font-size:72px;font-weight:900;color:#fff;line-height:1;display:none}
-#ovLabel{font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:3px;display:none}
-#ovBest{font-size:16px;color:rgba(255,255,255,0.55);display:none}
-#ovCombo{font-size:13px;color:#ffd700;display:none}
-#ovBtn{margin-top:6px;padding:13px 44px;background:rgba(80,180,255,0.12);border:1px solid rgba(80,180,255,0.35);border-radius:30px;color:#fff;font-size:15px;font-weight:700;letter-spacing:2px;cursor:pointer;text-transform:uppercase}
-#ovBtn:hover{background:rgba(80,180,255,0.25)}
+canvas{width:100%;height:100%;display:block}
 </style>
 </head>
 <body>
-<div id="wrap">
-<canvas id="c"></canvas>
-<div id="ov">
-  <div id="ovTitle">RING BREACH</div>
-  <div id="ovSub">Fling your star through<br>the spinning gap</div>
-  <div id="ovScore"></div>
-  <div id="ovLabel">SCORE</div>
-  <div id="ovBest"></div>
-  <div id="ovCombo"></div>
-  <button id="ovBtn">TAP TO PLAY</button>
-</div>
-</div>
+<div id="wrap"><canvas id="c"></canvas></div>
 <script>
-const CV = document.getElementById('c');
-const ctx = CV.getContext('2d');
-const wrap = document.getElementById('wrap');
-const ov = document.getElementById('ov');
-let W, H, DPR, CX, CY;
+'use strict';
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = 420, H = 750, CX = W/2, CY = H/2;
+const DPR = window.devicePixelRatio || 1;
+canvas.width = W * DPR;
+canvas.height = H * DPR;
+ctx.scale(DPR, DPR);
 
-function resize() {
-  const r = wrap.getBoundingClientRect();
-  W = r.width; H = r.height;
-  DPR = Math.min(window.devicePixelRatio || 1, 3);
-  CV.width = W * DPR; CV.height = H * DPR;
-  ctx.scale(DPR, DPR);
-  CX = W / 2; CY = H / 2;
-}
-window.addEventListener('resize', resize);
-resize();
-
-// Constants
-const RW = 10;
-const RADII = [60, 110, 160, 210];
-const FLY_F = 22;
-const PAL_HUE  = [200, 30, 280, 10, 150, 320];
-const PAL_NAME = ['AURORA','FORGE','VOID','CORAL','GROVE','PULSE'];
+// Layout constants
+const BASE_R = 112;   // visual radius of player's ring
+const RING_GAP = 88;  // visual spacing between ring slots
+const FLY_DUR = 0.42; // seconds for a fling
 
 // State
-let state = 'start';
-let score = 0, combo = 0;
-let hs = +localStorage.getItem('rb_hs') || 0;
-let hc = +localStorage.getItem('rb_hc') || 0;
-let ringIdx = 0;
-let starA = -Math.PI / 2;
-let flying = false;
-let flyP = 0, flyA = 0, flyR0 = 0, flyR1 = 0, flyTarget = 0;
-let greyOut = 0, deathT = 0;
-let palIdx = 0, palHue = PAL_HUE[0], palName = '', palNameT = 0;
-let shX = 0, shY = 0, shMag = 0, shF = 0;
-let scorePulse = 1, frame = 0;
-let sx = 0, sy = 0;
+let state = 'start';  // 'start' | 'playing' | 'gameover'
+let score = 0;
+let bestScore = parseInt(localStorage.getItem('orbitShift_v1_best') || '0');
+let hue = 200;
+let globalT = 0;
 
+// Background stars
+const STARS = Array.from({length: 72}, () => ({
+  x: (Math.random() - 0.5) * W,
+  y: (Math.random() - 0.5) * H,
+  r: Math.random() * 1.3 + 0.3,
+  phase: Math.random() * Math.PI * 2,
+  speed: 0.6 + Math.random() * 1.4,
+}));
+
+// Rings array
 let rings = [];
-let parts = [];
-let texts = [];
-let trail = [];
-let streaks = [];
+let playerRingIdx = 0;
+let camRingIdx = 0;  // smooth float that lerps to playerRingIdx
 
-for (let i = 0; i < 35; i++) streaks.push(mkStreak());
+// Player
+const player = {
+  angle: -Math.PI / 2,  // start at top
+  flying: false,
+  flyT: 0,
+  flyFromAngle: 0,
+  flyAngVel: 0,   // angular velocity carried during flight
+};
 
-function mkStreak() {
-  return { x: Math.random()*W, y: Math.random()*H, len: 20+Math.random()*50, spd: 0.4+Math.random()*1.2, a: 0.04+Math.random()*0.08 };
-}
+// Visual effects
+let particles = [];
+let popups = [];   // score popup texts
+let shakeMag = 0, shakeX = 0, shakeY = 0;
 
-// Helpers
-function angDiff(a, b) {
-  let d = ((b - a) % (Math.PI*2) + Math.PI*3) % (Math.PI*2) - Math.PI;
-  return Math.abs(d);
-}
-function gapSize() {
-  if (score < 11)  return Math.PI / 2;       // 90°
-  if (score < 26)  return Math.PI * 7/18;    // 70°
-  if (score < 51)  return Math.PI * 11/36;   // 55°
-  if (score < 100) return Math.PI / 4;       // 45°
-  return Math.PI * 2/9;                      // 40°
-}
-function margin() {
-  if (score < 11) return Math.PI / 18;  // ±10°
-  if (score < 26) return Math.PI / 36;  // ±5°
-  return Math.PI / 60;                  // ±3°
-}
-function numRings() { return score < 11 ? 2 : score < 26 ? 3 : 4; }
-function getMult() {
-  if (combo >= 7) return 8;
-  if (combo >= 5) return 5;
-  if (combo >= 3) return 3;
-  if (combo >= 2) return 2;
-  return 1;
-}
-function multColor(m) {
-  const h = palHue;
-  if (m >= 8) return `hsl(${h+180},100%,75%)`;
-  if (m >= 5) return `hsl(${h+30},100%,65%)`;
-  if (m >= 3) return `hsl(${h+60},90%,60%)`;
-  if (m >= 2) return `hsl(${h+90},80%,55%)`;
-  return `hsl(${h},70%,70%)`;
-}
-function ringColor(i) { return `hsl(${palHue + i*30},65%,55%)`; }
-function shake(m, f) { shMag = Math.max(shMag, m); shF = Math.max(shF, f); }
-
-function spark(x, y, n, col, spd) {
-  for (let i = 0; i < n; i++) {
-    const a = Math.random()*Math.PI*2, s = spd*(0.5+Math.random());
-    parts.push({ x, y, vx: Math.cos(a)*s, vy: Math.sin(a)*s, life:1, dec:0.04+Math.random()*0.03, r:2+Math.random()*2, col, frag:false });
-  }
-}
-function shatter(x, y, vx, vy, col) {
-  for (let i = 0; i < 20; i++) {
-    const a = (i/20)*Math.PI*2+Math.random()*0.4, s = 2+Math.random()*4;
-    parts.push({ x, y, vx: Math.cos(a)*s+vx*0.2, vy: Math.sin(a)*s+vy*0.2, life:1, dec:0.02+Math.random()*0.02, r:2+Math.random()*3, col, frag:true });
-  }
-}
-function floatTxt(x, y, t, col, sz) {
-  texts.push({ x, y, t, col, sz: sz||18, life:1, vy:-1.5 });
+// ─── Ring helpers ────────────────────────────────────────────
+function ringRadius(idx) {
+  return BASE_R + (idx - camRingIdx) * RING_GAP;
 }
 
-// Ring init
-function mkRings() {
-  const n = numRings();
-  const g = gapSize();
-  const BASE_SPD = [0.012, -0.017, 0.0085, -0.021];
+function makeRing() {
+  const difficulty = Math.max(0, rings.length - 2);
+  const gapHalf = Math.max(0.155, 0.32 - difficulty * 0.0045);
+  const speedBase = 0.72 + difficulty * 0.045;
+  const speedVar  = 0.45 + Math.random() * 0.85;
+  const dir = Math.random() < 0.5 ? 1 : -1;
+  return {
+    gapAngle: Math.random() * Math.PI * 2,
+    gapHalf,
+    rotSpeed: (speedBase + speedVar) * dir,
+    hue: Math.random() * 360,
+  };
+}
+
+function initGame() {
+  score = 0;
+  hue = Math.random() * 360;
+  particles = [];
+  popups = [];
+  shakeMag = 0;
   rings = [];
-  for (let i = 0; i < n; i++) {
-    rings.push({
-      r: RADII[i],
-      gapA: Math.random() * Math.PI * 2,
-      spd: BASE_SPD[i] * (1 + Math.min(score,100)*0.008),
-      g,
-      revWarn: 0, revCooldown: 0,
-      glowF: 0, glowCol: '#fff'
-    });
-  }
+  playerRingIdx = 0;
+  camRingIdx = 0;
+  player.angle = -Math.PI / 2;
+  player.flying = false;
+  player.flyT = 0;
+  for (let i = 0; i < 5; i++) rings.push(makeRing());
+  // First gap near player start so first tap teaches mechanics
+  rings[1].gapAngle = player.angle + (Math.random() - 0.5) * 0.9;
 }
 
-function updateStar() {
-  sx = CX + rings[ringIdx].r * Math.cos(starA);
-  sy = CY + rings[ringIdx].r * Math.sin(starA);
-}
-
-// Game start
-function startGame() {
-  score = 0; combo = 0;
-  ringIdx = 0; starA = -Math.PI / 2;
-  flying = false; flyP = 0;
-  greyOut = 0; deathT = 0;
-  palIdx = 0; palHue = PAL_HUE[0];
-  parts = []; texts = []; trail = [];
-  scorePulse = 1; frame = 0;
-  mkRings();
-  updateStar();
-  state = 'playing';
-  ov.classList.add('hide');
-}
-
-// Tap
-function onTap() {
-  if (state === 'start' || state === 'gameover') { startGame(); return; }
-  if (state !== 'playing' || flying) return;
-  flyA = starA;
-  flyR0 = rings[ringIdx].r;
-  flyTarget = ringIdx + 1;
-  if (flyTarget >= rings.length) {
-    flyTarget = -1;
-    flyR1 = rings[rings.length-1].r + 55;
-  } else {
-    flyR1 = rings[flyTarget].r;
-  }
-  flyP = 0;
-  flying = true;
-  trail = [];
-}
-
-// Arrival
-function arrive() {
-  const isEscape = flyTarget === -1;
-  let died = false, grazed = false;
-
-  if (!isEscape) {
-    const tr = rings[flyTarget];
-    const diff = angDiff(flyA, tr.gapA);
-    const half = tr.g / 2;
-    const m = margin();
-    if (diff > half + m) died = true;
-    else grazed = diff > half - m;
-  }
-
-  if (died) {
-    state = 'dying'; deathT = 0;
-    shake(12, 10);
-    shatter(sx, sy, Math.cos(flyA)*3, Math.sin(flyA)*3, multColor(getMult()));
-    if (score > hs) { hs = score; localStorage.setItem('rb_hs', hs); }
-    if (combo > hc) { hc = combo; localStorage.setItem('rb_hc', hc); }
-    flying = false;
+// ─── Input ───────────────────────────────────────────────────
+function handleTap() {
+  if (state === 'start') {
+    state = 'playing';
+    initGame();
     return;
   }
-
-  combo++;
-  const m = getMult();
-  score += isEscape ? m * 2 : m;
-  scorePulse = 1.5;
-  if (score > hs) { hs = score; localStorage.setItem('rb_hs', hs); }
-  if (combo > hc) { hc = combo; localStorage.setItem('rb_hc', hc); }
-
-  // Palette shift every 10 pts
-  const pi = Math.floor(score/10) % PAL_HUE.length;
-  if (pi !== palIdx) {
-    palIdx = pi; palHue = PAL_HUE[pi];
-    palName = PAL_NAME[pi]; palNameT = 90;
+  if (state === 'gameover') {
+    state = 'playing';
+    initGame();
+    return;
   }
-
-  if (isEscape) {
-    ringIdx = 0;
-    mkRings();
-    starA = flyA;
-    spark(sx, sy, 16, `hsl(${palHue},100%,80%)`, 5);
-    floatTxt(sx, sy-35, 'BREACH!', `hsl(${palHue},100%,80%)`, 22);
-    shake(5, 6);
-  } else {
-    ringIdx = flyTarget;
-    starA = flyA;
-    rings.forEach(r => r.g = gapSize());
-    const tr = rings[ringIdx];
-    if (grazed) {
-      shake(6, 6);
-      spark(sx, sy, 8, '#ffd700', 4);
-      floatTxt(sx, sy-25, 'GRAZE!', '#ffd700', 18);
-      tr.glowF = 1; tr.glowCol = '#ffd700';
-    } else {
-      shake(2, 3);
-      spark(sx, sy, 12, '#fff', 3);
-      tr.glowF = 1; tr.glowCol = '#fff';
-    }
+  if (state === 'playing' && !player.flying) {
+    const cur = rings[playerRingIdx];
+    player.flyFromAngle = player.angle;
+    player.flyAngVel = cur.rotSpeed;  // carry orbital momentum
+    player.flying = true;
+    player.flyT = 0;
   }
-
-  flying = false;
-  trail = [];
-  updateStar();
 }
 
-// Update
-function update() {
-  frame++;
-
-  // Screen shake
-  if (shF > 0) {
-    shX = (Math.random()-.5)*shMag*2;
-    shY = (Math.random()-.5)*shMag*2;
-    if (--shF === 0) { shX = shY = shMag = 0; }
-  }
-
-  // Streaks
-  const sf = 1 + score*0.015;
-  for (const s of streaks) {
-    s.y -= s.spd * sf;
-    if (s.y < -80) Object.assign(s, mkStreak(), { y: H+20 });
-  }
-
-  // Ring rotation + reversal
-  for (const ring of rings) {
-    ring.gapA += ring.spd;
-    if (ring.glowF > 0) ring.glowF -= 0.07;
-    if (score >= 26) {
-      if (ring.revWarn > 0) {
-        ring.revWarn--;
-        if (ring.revWarn === 0) { ring.spd = -ring.spd; ring.revCooldown = 300 + Math.random()*300; }
-      }
-      if (ring.revCooldown > 0) {
-        ring.revCooldown--;
-      } else if (ring.revWarn === 0 && Math.random() < 0.0008) {
-        ring.revWarn = 30;
-      }
-    }
-  }
-
-  // Star / flying
-  if (state === 'playing') {
-    if (flying) {
-      flyP = Math.min(flyP + 1/FLY_F, 1);
-      const r = flyR0 + (flyR1 - flyR0) * flyP;
-      const lat = Math.sin(flyP * Math.PI) * 10;
-      const pa = flyA + Math.PI/2;
-      sx = CX + r*Math.cos(flyA) + lat*Math.cos(pa);
-      sy = CY + r*Math.sin(flyA) + lat*Math.sin(pa);
-      trail.push({ x:sx, y:sy, life:1, r:3+Math.random()*2 });
-      if (trail.length > 12) trail.shift();
-      if (flyP >= 1) arrive();
-    } else {
-      starA += rings[ringIdx].spd;
-      updateStar();
-    }
-  }
-
-  // Dying
-  if (state === 'dying') {
-    deathT++;
-    greyOut = Math.min(1, deathT/20);
-    if (deathT > 55) { state = 'gameover'; showGO(); }
-  }
-
-  // Particles
-  for (let i = parts.length-1; i >= 0; i--) {
-    const p = parts[i];
-    p.x += p.vx; p.y += p.vy; p.vy += 0.07;
-    p.life -= p.dec;
-    if (p.life <= 0) parts.splice(i, 1);
-  }
-  for (const t of trail) t.life -= 0.07;
-  for (let i = texts.length-1; i >= 0; i--) {
-    const t = texts[i];
-    t.y += t.vy; t.life -= 0.022;
-    if (t.life <= 0) texts.splice(i, 1);
-  }
-
-  if (scorePulse > 1) scorePulse = 1 + (scorePulse-1)*0.82;
-  if (palNameT > 0) palNameT--;
-}
-
-// Draw
-function draw() {
-  ctx.save();
-  ctx.translate(shX, shY);
-
-  // Background
-  ctx.fillStyle = `hsl(${palHue+220},35%,5%)`;
-  ctx.fillRect(-10, -10, W+20, H+20);
-
-  // Streaks
-  const sf = Math.min(3, 1 + score*0.02);
-  for (const s of streaks) {
-    ctx.strokeStyle = `rgba(255,255,255,${s.a * sf})`;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(s.x, s.y);
-    ctx.lineTo(s.x, s.y + s.len*sf);
-    ctx.stroke();
-  }
-
-  // Death greyscale overlay
-  if (greyOut > 0) {
-    ctx.fillStyle = `rgba(15,15,25,${greyOut*0.65})`;
-    ctx.fillRect(0, 0, W, H);
-  }
-
-  // Rings (outermost first so star draws on top)
-  for (let i = rings.length-1; i >= 0; i--) {
-    const ring = rings[i];
-    const ga = ring.gapA;
-    const hg = ring.g / 2;
-    const gs = ga - hg, ge = ga + hg;
-
-    ctx.save();
-    if (ring.glowF > 0) {
-      ctx.shadowColor = ring.glowCol;
-      ctx.shadowBlur = 25 * ring.glowF;
-    }
-    ctx.globalAlpha = i === ringIdx ? 1 : 0.65;
-    ctx.strokeStyle = ringColor(i);
-    ctx.lineWidth = i === ringIdx ? RW+2 : RW;
-    ctx.lineCap = 'butt';
-    ctx.beginPath();
-    ctx.arc(CX, CY, ring.r, ge, gs); // clockwise long arc = ring wall
-    ctx.stroke();
-    ctx.restore();
-
-    // Tutorial gap highlight on target ring
-    if (score < 11 && i === ringIdx+1 && !flying) {
-      ctx.save();
-      ctx.globalAlpha = 0.35 + 0.25*Math.sin(frame*0.12);
-      ctx.strokeStyle = `hsl(${palHue+60},100%,75%)`;
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.arc(CX, CY, ring.r, gs, ge);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // Reversal warning flash
-    if (ring.revWarn > 0) {
-      const flash = Math.floor(frame/4) % 2 === 0;
-      if (flash) {
-        ctx.save();
-        ctx.globalAlpha = 0.6;
-        ctx.strokeStyle = '#ff3333';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([8, 8]);
-        ctx.beginPath();
-        ctx.arc(CX, CY, ring.r+12, 0, Math.PI*2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-      }
-    }
-  }
-
-  // Comet trail
-  for (let i = 0; i < trail.length; i++) {
-    const t = trail[i];
-    const tf = (i+1)/trail.length;
-    ctx.globalAlpha = t.life * tf * 0.75;
-    ctx.fillStyle = multColor(getMult());
-    ctx.beginPath();
-    ctx.arc(t.x, t.y, t.r*tf, 0, Math.PI*2);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-
-  // Particles
-  for (const p of parts) {
-    ctx.globalAlpha = p.life;
-    ctx.fillStyle = p.col;
-    if (p.frag) {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.life * 8);
-      ctx.fillRect(-p.r/2, -p.r/2, p.r, p.r);
-      ctx.restore();
-    } else {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r*p.life, 0, Math.PI*2);
-      ctx.fill();
-    }
-  }
-  ctx.globalAlpha = 1;
-
-  // Star
-  if (state !== 'dying' || deathT < 4) {
-    const sc = multColor(getMult());
-    ctx.save();
-    ctx.shadowColor = sc;
-    ctx.shadowBlur = 18 + getMult()*4;
-    ctx.fillStyle = sc;
-    ctx.beginPath();
-    ctx.arc(sx, sy, 7, 0, Math.PI*2);
-    ctx.fill();
-    ctx.shadowBlur = 5;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(sx, sy, 3, 0, Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // Float texts
-  for (const t of texts) {
-    ctx.globalAlpha = t.life;
-    ctx.fillStyle = t.col;
-    ctx.font = `bold ${t.sz}px 'Segoe UI',system-ui,sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(t.t, t.x, t.y);
-  }
-  ctx.globalAlpha = 1;
-
-  // HUD
-  if (state === 'playing' || state === 'dying') {
-    // Score with pulse
-    ctx.save();
-    ctx.translate(CX, 48);
-    ctx.scale(scorePulse, scorePulse);
-    ctx.fillStyle = '#fff';
-    ctx.font = `bold 38px 'Segoe UI',system-ui,sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(score, 0, 0);
-    ctx.restore();
-
-    // Combo multiplier
-    if (combo >= 2) {
-      ctx.fillStyle = multColor(getMult());
-      ctx.font = `bold 15px 'Segoe UI',system-ui,sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(`×${getMult()} COMBO`, CX, 72);
-    }
-
-    // Best score
-    ctx.fillStyle = 'rgba(255,255,255,0.28)';
-    ctx.font = `11px 'Segoe UI',system-ui,sans-serif`;
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`BEST ${hs}`, W-16, 16);
-
-    // Tutorial hint
-    if (score < 5) {
-      ctx.fillStyle = 'rgba(255,255,255,0.32)';
-      ctx.font = `11px 'Segoe UI',system-ui,sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText('TAP WHEN GAP ALIGNS WITH YOUR STAR', CX, H-20);
-    }
-
-    // Palette name
-    if (palNameT > 0) {
-      const a = Math.min(1, palNameT/15) * Math.min(1, palNameT/15);
-      ctx.globalAlpha = a;
-      ctx.fillStyle = `hsl(${palHue},80%,75%)`;
-      ctx.font = `bold 13px 'Segoe UI',system-ui,sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.fillText(palName, CX, H-45);
-      ctx.globalAlpha = 1;
-    }
-  }
-
-  ctx.restore(); // end shake
-}
-
-// Game over overlay
-function showGO() {
-  ov.classList.remove('hide');
-  document.getElementById('ovTitle').textContent = 'GAME OVER';
-  document.getElementById('ovSub').style.display = 'none';
-  document.getElementById('ovScore').style.display = 'block';
-  document.getElementById('ovScore').textContent = score;
-  document.getElementById('ovLabel').style.display = 'block';
-  document.getElementById('ovBest').style.display = 'block';
-  document.getElementById('ovBest').textContent = `BEST: ${hs}`;
-  document.getElementById('ovCombo').style.display = 'block';
-  document.getElementById('ovCombo').textContent = `BEST COMBO: ×${getMult()} (${hc} in a row)`;
-  document.getElementById('ovBtn').textContent = 'PLAY AGAIN';
-}
-
-// Input
-function onInput(e) {
-  if (e && e.preventDefault) e.preventDefault();
-  if (state === 'start' || state === 'gameover') startGame();
-  else if (state === 'playing' && !flying) onTap();
-}
-
-CV.addEventListener('pointerdown', onInput);
-document.getElementById('ovBtn').addEventListener('click', e => { e.stopPropagation(); startGame(); });
+canvas.addEventListener('pointerdown', e => { e.preventDefault(); handleTap(); });
 document.addEventListener('keydown', e => {
-  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); onInput(); }
+  if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); handleTap(); }
 });
 
-// Loop
-(function loop() {
-  update();
+// ─── Utilities ───────────────────────────────────────────────
+function angDiff(a, b) {
+  let d = ((a - b) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+  return d;
+}
+
+function eio(t) { return t < 0.5 ? 2*t*t : -1 + (4 - 2*t) * t; }
+
+function spawnParticles(wx, wy, color, n) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const spd = 75 + Math.random() * 210;
+    const life = 0.35 + Math.random() * 0.45;
+    particles.push({ x: wx, y: wy, vx: Math.cos(a)*spd, vy: Math.sin(a)*spd,
+                     color, r: 1.8 + Math.random() * 3, life, maxLife: life });
+  }
+}
+
+function addPopup(text, wx, wy, color) {
+  popups.push({ text, x: wx, y: wy, life: 1.0, color });
+}
+
+// ─── Update ──────────────────────────────────────────────────
+function update(dt) {
+  if (state !== 'playing') return;
+
+  hue = (hue + 11 * dt) % 360;
+  camRingIdx += (playerRingIdx - camRingIdx) * 7 * dt;
+
+  for (const r of rings) r.gapAngle += r.rotSpeed * dt;
+
+  if (!player.flying) {
+    player.angle += rings[playerRingIdx].rotSpeed * dt;
+  } else {
+    player.flyT += dt / FLY_DUR;
+    // Continuous angle update during flight
+    player.angle = player.flyFromAngle + player.flyAngVel * (player.flyT * FLY_DUR);
+
+    if (player.flyT >= 1) {
+      // Arrival
+      const arrAngle = player.flyFromAngle + player.flyAngVel * FLY_DUR;
+      const nextRing = rings[playerRingIdx + 1];
+      const diff = angDiff(arrAngle, nextRing.gapAngle);
+
+      if (Math.abs(diff) < nextRing.gapHalf) {
+        // SUCCESS
+        const nearMiss = Math.abs(diff) > nextRing.gapHalf * 0.70;
+        score++;
+        if (nearMiss) score++;
+
+        playerRingIdx++;
+        player.angle = arrAngle;
+        player.flying = false;
+        player.flyT = 0;
+        rings.push(makeRing());
+
+        const ar = ringRadius(playerRingIdx);
+        const wx = Math.cos(arrAngle) * ar;
+        const wy = Math.sin(arrAngle) * ar;
+        spawnParticles(wx, wy, nearMiss ? '#FFD700' : `hsl(${nextRing.hue},100%,72%)`, nearMiss ? 24 : 14);
+        if (nearMiss) addPopup('NEAR MISS! +2', wx, wy - 20, '#FFD700');
+
+      } else {
+        // FAIL
+        const ar = ringRadius(playerRingIdx + 1);
+        const wx = Math.cos(arrAngle) * ar;
+        const wy = Math.sin(arrAngle) * ar;
+        spawnParticles(wx, wy, '#FF3344', 36);
+        shakeMag = 16;
+        state = 'gameover';
+        if (score > bestScore) {
+          bestScore = score;
+          localStorage.setItem('orbitShift_v1_best', bestScore);
+        }
+      }
+    }
+  }
+
+  // Particles
+  for (const p of particles) {
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vx *= 0.93; p.vy *= 0.93;
+    p.life -= dt;
+  }
+  particles = particles.filter(p => p.life > 0);
+
+  // Popups
+  for (const pop of popups) { pop.y -= 40 * dt; pop.life -= dt * 1.6; }
+  popups = popups.filter(p => p.life > 0);
+
+  // Shake
+  if (shakeMag > 0.5) {
+    shakeMag *= 0.80;
+    shakeX = (Math.random() - 0.5) * shakeMag;
+    shakeY = (Math.random() - 0.5) * shakeMag;
+  } else { shakeMag = shakeX = shakeY = 0; }
+}
+
+// ─── Draw ────────────────────────────────────────────────────
+function drawBg() {
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#05050f');
+  g.addColorStop(1, '#0d0525');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawStars() {
+  ctx.save();
+  ctx.translate(CX, CY);
+  for (const s of STARS) {
+    const b = 0.2 + 0.35 * (0.5 + 0.5 * Math.sin(globalT * s.speed + s.phase));
+    ctx.globalAlpha = b;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function drawRings() {
+  const start = Math.max(0, playerRingIdx - 1);
+  const end   = Math.min(rings.length, playerRingIdx + 4);
+  for (let i = start; i < end; i++) {
+    const ring = rings[i];
+    const r = ringRadius(i);
+    if (r < 8) continue;
+
+    const offset = i - camRingIdx;
+    let alpha = 1;
+    if (offset < -0.05) alpha = Math.max(0, 1 + offset * 4);
+    else if (offset > 2.6) alpha = Math.max(0, 1 - (offset - 2.6) * 3);
+    if (alpha <= 0.02) continue;
+
+    const isCurrent = (i === playerRingIdx);
+    const isNext    = (i === playerRingIdx + 1);
+    const rHue = (ring.hue + hue * 0.35) % 360;
+    const light = isCurrent ? 68 : isNext ? 62 : 46;
+    const sat   = isCurrent ? 80 : isNext ? 76 : 55;
+    const baseA = alpha * (isCurrent ? 1 : isNext ? 0.88 : 0.32);
+    const lw    = isCurrent ? 3.2 : isNext ? 2.6 : 1.6;
+
+    ctx.shadowColor = `hsl(${rHue},80%,65%)`;
+    ctx.shadowBlur  = isCurrent ? 8 : isNext ? 6 : 3;
+
+    // Ring body (gap cut out)
+    ctx.beginPath();
+    ctx.arc(0, 0, r,
+      ring.gapAngle + ring.gapHalf,
+      ring.gapAngle - ring.gapHalf + Math.PI * 2
+    );
+    ctx.strokeStyle = `hsla(${rHue},${sat}%,${light}%,${baseA})`;
+    ctx.lineWidth = lw;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Highlight gap on next ring
+    if (isNext) {
+      ctx.beginPath();
+      ctx.arc(0, 0, r, ring.gapAngle - ring.gapHalf, ring.gapAngle + ring.gapHalf);
+      ctx.strokeStyle = `hsla(${rHue},100%,82%,${alpha * 0.42})`;
+      ctx.lineWidth = 5;
+      ctx.stroke();
+
+      for (const sign of [-1, 1]) {
+        const ea = ring.gapAngle + sign * ring.gapHalf;
+        ctx.shadowColor = `hsl(${rHue},100%,80%)`;
+        ctx.shadowBlur  = 6;
+        ctx.fillStyle   = `hsla(${rHue},100%,88%,${alpha * 0.92})`;
+        ctx.beginPath();
+        ctx.arc(Math.cos(ea) * r, Math.sin(ea) * r, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+    }
+  }
+}
+
+function drawPlayer() {
+  let r, angle;
+  if (!player.flying) {
+    r = ringRadius(playerRingIdx);
+    angle = player.angle;
+  } else {
+    const t = eio(player.flyT);
+    const fromR = ringRadius(playerRingIdx);
+    const toR   = ringRadius(playerRingIdx + 1);
+    r = fromR + (toR - fromR) * t;
+    angle = player.flyFromAngle + player.flyAngVel * (player.flyT * FLY_DUR);
+  }
+
+  const px = Math.cos(angle) * r;
+  const py = Math.sin(angle) * r;
+
+  // Flight trail
+  if (player.flying) {
+    const steps = 12;
+    for (let i = steps - 1; i >= 1; i--) {
+      const ft = player.flyT * (i / steps);
+      const tt = eio(ft);
+      const fromR = ringRadius(playerRingIdx);
+      const toR   = ringRadius(playerRingIdx + 1);
+      const tr = fromR + (toR - fromR) * tt;
+      const ta = player.flyFromAngle + player.flyAngVel * (ft * FLY_DUR);
+      ctx.globalAlpha = (i / steps) * 0.4;
+      ctx.fillStyle = `hsl(${hue},100%,80%)`;
+      ctx.beginPath();
+      ctx.arc(Math.cos(ta) * tr, Math.sin(ta) * tr, 3.5 * (i / steps), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Outer glow
+  ctx.shadowColor = `hsl(${hue},100%,80%)`;
+  ctx.shadowBlur  = 18;
+  const grd = ctx.createRadialGradient(px, py, 0, px, py, 17);
+  grd.addColorStop(0, `hsla(${hue},100%,95%,0.85)`);
+  grd.addColorStop(1, `hsla(${hue},100%,70%,0)`);
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.arc(px, py, 17, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Core dot
+  ctx.fillStyle = `hsl(${hue},50%,98%)`;
+  ctx.beginPath();
+  ctx.arc(px, py, 5.5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawParticles() {
+  for (const p of particles) {
+    ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawPopups() {
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const pop of popups) {
+    ctx.globalAlpha = Math.max(0, pop.life);
+    ctx.font = 'bold 14px Arial';
+    ctx.fillStyle = pop.color;
+    ctx.fillText(pop.text, pop.x, pop.y);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawHUD() {
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'top';
+  ctx.font         = 'bold 34px Arial';
+  ctx.fillStyle    = 'rgba(255,255,255,0.92)';
+  ctx.fillText(score, CX, 24);
+  ctx.font      = '13px Arial';
+  ctx.fillStyle = 'rgba(255,255,255,0.32)';
+  ctx.fillText('BEST ' + bestScore, CX, 63);
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawStartScreen() {
+  ctx.fillStyle = 'rgba(4,4,20,0.80)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+
+  const ty = CY - 95;
+  ctx.font        = 'bold 60px Arial';
+  ctx.shadowColor = `hsl(${hue},100%,70%)`;
+  ctx.shadowBlur  = 18;
+  ctx.fillStyle   = `hsl(${hue},88%,72%)`;
+  ctx.fillText('ORBIT', CX, ty);
+  ctx.fillStyle   = `hsl(${(hue + 45) % 360},88%,78%)`;
+  ctx.fillText('SHIFT', CX, ty + 68);
+  ctx.shadowBlur  = 0;
+
+  ctx.font      = '15px Arial';
+  ctx.fillStyle = 'rgba(255,255,255,0.52)';
+  ctx.fillText('Thread the gap before the rings desync', CX, ty + 122);
+
+  const pulse = 0.55 + 0.45 * Math.sin(globalT * 2.8);
+  ctx.font      = 'bold 20px Arial';
+  ctx.fillStyle = `rgba(255,255,255,${pulse})`;
+  ctx.fillText('TAP TO START', CX, ty + 178);
+
+  ctx.font      = '13px Arial';
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
+  ctx.fillText('Tap  \u00b7  Space  \u00b7  Enter', CX, ty + 214);
+
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawGameOverScreen() {
+  ctx.fillStyle = 'rgba(4,4,20,0.84)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.font        = 'bold 30px Arial';
+  ctx.fillStyle   = '#FF4455';
+  ctx.shadowColor = '#FF0022';
+  ctx.shadowBlur  = 12;
+  ctx.fillText('SHATTERED', CX, CY - 72);
+  ctx.shadowBlur  = 0;
+
+  ctx.font      = 'bold 82px Arial';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(score, CX, CY + 10);
+
+  if (score > 0 && score === bestScore) {
+    ctx.font        = 'bold 17px Arial';
+    ctx.fillStyle   = '#FFD700';
+    ctx.shadowColor = '#FFD700';
+    ctx.shadowBlur  = 8;
+    ctx.fillText('NEW BEST!', CX, CY + 58);
+    ctx.shadowBlur  = 0;
+  } else {
+    ctx.font      = '14px Arial';
+    ctx.fillStyle = 'rgba(255,255,255,0.38)';
+    ctx.fillText('BEST: ' + bestScore, CX, CY + 58);
+  }
+
+  const pulse = 0.55 + 0.45 * Math.sin(globalT * 2.8);
+  ctx.font      = 'bold 19px Arial';
+  ctx.fillStyle = `rgba(255,255,255,${pulse})`;
+  ctx.fillText('TAP TO RETRY', CX, CY + 108);
+
+  ctx.textBaseline = 'alphabetic';
+}
+
+function draw() {
+  drawBg();
+  drawStars();
+
+  ctx.save();
+  ctx.translate(CX + shakeX, CY + shakeY);
+
+  drawRings();
+
+  if (state === 'playing') {
+    drawPlayer();
+    drawParticles();
+    drawPopups();
+  } else if (state === 'gameover') {
+    drawParticles();
+  }
+
+  ctx.restore();
+
+  if (state === 'playing' || state === 'gameover') drawHUD();
+  if (state === 'start')    drawStartScreen();
+  if (state === 'gameover') drawGameOverScreen();
+}
+
+// ─── Main loop ───────────────────────────────────────────────
+let lastT = 0;
+function loop(ts) {
+  const dt = Math.min((ts - lastT) / 1000, 0.05);
+  lastT = ts;
+  globalT += dt;
+  update(dt);
   draw();
   requestAnimationFrame(loop);
-})();
+}
+
+// Boot
+initGame();
+requestAnimationFrame(ts => { lastT = ts; requestAnimationFrame(loop); });
 </script>
 </body>
 </html>
